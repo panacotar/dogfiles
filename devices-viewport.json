@@ -1,0 +1,18 @@
+{
+  "Phone Portrait": {
+    "width": 360,
+    "height": 600
+  },
+  "Tablet Portrait": {
+    "width": 696,
+    "height": 1074
+  },
+  "Tablet Landscape": {
+    "width": 1098,
+    "height": 662
+  },
+  "Laptop": {
+    "width": 1306,
+    "height": 669
+  }
+}

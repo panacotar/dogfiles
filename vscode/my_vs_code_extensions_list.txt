@@ -1,0 +1,17 @@
+christian-kohler.path-intellisense
+dbaeumer.vscode-eslint
+DigitalBrainstem.javascript-ejs-support
+dracula-theme.theme-dracula
+erikphansen.vscode-toggle-column-selection
+esbenp.prettier-vscode
+file-icons.file-icons
+hex-ci.stylelint-plus
+LaurentTreguier.vscode-simple-icons
+mgmcdermott.vscode-language-babel
+ms-vsliveshare.vsliveshare
+msjsdiag.debugger-for-chrome
+naumovs.color-highlight
+Perkovec.emoji
+pranaygp.vscode-css-peek
+ritwickdey.LiveServer
+vscode-icons-team.vscode-icons

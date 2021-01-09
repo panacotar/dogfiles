@@ -2,7 +2,7 @@
   branch = auto
   diff = auto
   interactive = auto
-  status = auto
+  status = always
   ui = auto
 
 [color "branch"]
@@ -17,7 +17,7 @@
   co = checkout
   st = status -sb
   br = branch
-  ci = commit
+  cm = commit
   fo = fetch origin
   d = !git --no-pager diff
   dt  = difftool
@@ -48,4 +48,4 @@
   mergeoptions = --no-edit
 [user]
 	email = organicdarius@gmail.com
-	name = DariusPirvulescu
+	name = Darius Pirvulescu
