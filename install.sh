@@ -1,3 +1,7 @@
+
+bold=$(tput bold)
+normal=$(tput sgr0)
+
 backup() {
   target=$1
   if [ -e "$target" ]; then           # Does the config file already exist?
@@ -7,6 +11,15 @@ backup() {
     fi
   fi
 }
+
+echo "Are you sure you want to install ${bold}Linux/Win${normal} configs? (y/n)"
+read confirm
+
+if [ $confirm != 'y' ]
+then
+  echo "Exiting..."
+  exit 0
+fi
 
 #!/bin/zsh
 for name in *; do

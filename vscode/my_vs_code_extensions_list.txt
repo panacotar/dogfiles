@@ -13,5 +13,4 @@ msjsdiag.debugger-for-chrome
 naumovs.color-highlight
 Perkovec.emoji
 pranaygp.vscode-css-peek
-ritwickdey.LiveServer
 vscode-icons-team.vscode-icons
