@@ -1,0 +1,13 @@
+[color "branch"]
+    current = green
+    remote = yellow
+
+[core]
+    pager = less -FRSX
+
+[user]
+    email = organicdarius@gmail.com
+    name = Darius Pirvulescu
+
+[includeIf "gitdir:~/code/advicefront/"]
+    path = ~/code/advicefront/.gitconfig
