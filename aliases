@@ -23,3 +23,6 @@ alias greq='gh pr create -fw -a @me'
 
 # Opens file in xdg (notepad)
 alias gimme='xdg-open'
+
+# Pull the changes from the current remote git branch
+alias gbpull='git pull origin "$(git_current_branch)"'
