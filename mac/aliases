@@ -1,0 +1,12 @@
+# Pulls from the develop branch
+unalias gpd
+alias gpod='git pull origin develop'
+
+# Opens rails server at port 5000
+alias rs5='rails s -p 5000'
+
+# Opens rails server at port 4000
+alias rs4='rails s -p 4000'
+
+# Pull the changes from the current remote git branch
+alias gbpull='git pull origin "$(git_current_branch)"'
