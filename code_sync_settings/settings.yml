@@ -1,0 +1,69 @@
+# current machine's name, optional; it can be used to filter settings or in the commit message
+hostname: "mac-m1"
+# more details at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/hostname.md
+
+# selected profile, required
+profile: main
+# repository to sync the settings with, required
+# repository:
+#   # repository's type, required (dummy: no sync)
+#   type: remote git
+
+
+# # how to run commands before and after events at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/hooks.md
+# hooks:
+#   post-upload: osascript -e 'display notification "The settings have been uploaded"'
+
+
+# # sync on local file system
+# repository:
+#   type: file
+#   # path of the local directory to sync with, required
+#   path: ~/Development/settings
+
+
+# # sync on local git
+# repository:
+#   type: git
+#   # path of the local git repository to sync with, required
+#   path: ~/Development/settings
+#   # branch to sync on, optional (set to `master` by default)
+#   branch: master
+#   # how to personalize the commit messages at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/commit-messages.md
+
+
+# sync on remote git
+repository:
+  type: git
+  # url of the remote git repository to sync with, required
+  url: git@github.com:DariusPirvulescu/vscode-sync-settings.git
+  # branch to sync on, optional (set to `master` by default)
+  branch: master
+  # how to personalize the commit messages at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/commit-messages.md
+  # commit messages used when initializing or updating a profile, optional
+  messages:
+    # commit message used when initializing a new profile, optional (set to `profile({{profile}}): init -- {{now|date:iso}}` by default)
+    init: 'profile({{profile}}): Init from {{hostname}} -- {{now|date:iso}}'
+    # commit message used when updating a profile, optional (set to `profile({{profile}}): update -- {{now|date:iso}}` by default)
+    update: 'profile({{profile}}): Update from {{hostname}} -- {{now|date:iso}}'
+
+
+# # sync on remote directory with rsync
+# repository:
+#   type: rsync
+#   # url of the remote directory to sync with, required
+#   url: server:~/settings
+#   # shell used by rsync, optional (set to `ssh` by default)
+#   shell: ssh
+
+
+# # sync on remote directory with webdav
+# repository:
+#   type: webdav
+#   # url of the remote directory, required
+#   url: http://localhost:9988/webdav/server
+#   # the username, optional
+#   username: webdav-user
+#   # the password, optional
+#   password: pa$$w0rd!
+#   # all options available at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/webdav.md
