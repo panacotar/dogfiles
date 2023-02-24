@@ -137,12 +137,13 @@ export LC_ALL=en_US.UTF-8
 # Store your own aliases in the ~/.aliases file and load the here.
 [[ -f "$HOME/.aliases" ]] && source "$HOME/.aliases"
 
-export PATH=/opt/homebrew/bin:$PATH
 eval "$(rbenv init -)"
-
 source /Users/darius/.docker/init-zsh.sh || true # Added by Docker Desktop
 
 export NVM_DIR="$HOME/.nvm"
+export GOPATH=$HOME/go
 export PATH=/usr/local/mysql/bin:$PATH
+export PATH=$GOPATH/bin:$PATH 
+export PATH=/opt/homebrew/bin:$PATH
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
