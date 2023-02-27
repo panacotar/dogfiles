@@ -142,6 +142,8 @@ source /Users/darius/.docker/init-zsh.sh || true # Added by Docker Desktop
 
 export NVM_DIR="$HOME/.nvm"
 export GOPATH=$HOME/go
+export EDITOR='nano'
+
 export PATH=/usr/local/mysql/bin:$PATH
 export PATH=$GOPATH/bin:$PATH 
 export PATH=/opt/homebrew/bin:$PATH
