@@ -15,4 +15,6 @@ alias gbpull='git pull origin "$(git_current_branch)"'
 alias gcno='git commit --allow-empty -m "empty commit"'
 
 # Advicefront related
+alias advup='docker-compose --profile advisor up'
 alias boup='docker-compose --profile backoffice up'
+alias clup='docker-compose --profile client up'
