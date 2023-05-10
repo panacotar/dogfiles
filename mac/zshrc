@@ -83,6 +83,9 @@ plugins=(git gitfast last-working-dir common-aliases history-substring-search ss
 export HOMEBREW_NO_ANALYTICS=1
 ZSH_DISABLE_COMPFIX=true
 
+# Fix for docker compose ssh (Advicefront)
+zstyle :omz:plugins:ssh-agent agent-forwarding on
+
 # Actually load Oh-My-Zsh
 source $ZSH/oh-my-zsh.sh
 
