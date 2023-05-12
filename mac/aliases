@@ -18,5 +18,5 @@ alias gcno='git commit --allow-empty -m "empty commit"'
 alias advup='docker-compose --profile advisor up'
 alias boup='docker-compose --profile backoffice up'
 alias clup='docker-compose --profile client up'
-
+# # Runs a Shell command in docker
 alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
