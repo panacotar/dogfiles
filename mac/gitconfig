@@ -9,6 +9,3 @@
 [user]
     email = organicdarius@gmail.com
     name = Darius Pirvulescu
-
-[includeIf "gitdir:~/code/advicefront/"]
-    path = ~/code/advicefront/.gitconfig
