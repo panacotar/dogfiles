@@ -4,3 +4,5 @@ def cpy(arg)
   puts out
   true
 end
+
+Pry.config.commands.alias_command "cc", "continue"
