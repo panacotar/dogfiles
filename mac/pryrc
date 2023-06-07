@@ -5,4 +5,7 @@ def cpy(arg)
   true
 end
 
-Pry.config.commands.alias_command "cc", "continue"
+if defined?(PryByebug)
+  Pry.commands.alias_command 's', 'step'
+  Pry.commands.alias_command 'cc', 'continue'
+end
