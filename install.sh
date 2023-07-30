@@ -47,15 +47,26 @@ mkdir -p "$ZSH_PLUGINS_DIR" && cd "$ZSH_PLUGINS_DIR"
 if [ ! -d "$ZSH_PLUGINS_DIR/zsh-syntax-highlighting" ]; then
   echo "-----> Installing zsh plugin 'zsh-syntax-highlighting'..."
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
+  git clone https://github.com/zsh-users/zsh-autosuggestions.git
 fi
 cd "$CURRENT_DIR"
 
 setopt nocasematch
 if [[ ! `uname` =~ "darwin" ]]; then
   echo 'export BUNDLER_EDITOR="subl $@ >/dev/null 2>&1 -a"' >> zshrc
+  CODE_PATH=~/Library/Application\ Support/Code/User
 else
+  # Else, it's a Linux
   bundler_editor="code -w"
   echo "export BUNDLER_EDITOR=\"${bundler_editor}\"" >> zshrc
+  CODE_PATH=~/.config/Code/User
+
+  # If no folder, then it's WSL
+  if [ ! -e $CODE_PATH ]; then
+    CODE_PATH=~/.vscode-server/data/Machine
+  fi
+fi
+
 fi
 
 zsh ~/.zshrc
