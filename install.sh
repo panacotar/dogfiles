@@ -21,6 +21,20 @@ then
   exit 0
 fi
 
+echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
+read key_swap_confim
+
+if [ $key_swap_confim = 'y' ]
+then
+  echo "Swapping keys CTRL - CAPS LOCK..."
+  # Add command to zshrc (will always be executed when zshrc is sourced)
+  # The option might be `caps:swapcaps` in some cases
+  echo "setxkbmap -option caps:nocaps" >> zshrc
+
+  # Alternative using gnome-tweaks
+  # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
+fi
+
 #!/bin/zsh
 for name in *; do
   if [ ! -d "$name" ]; then
@@ -53,20 +67,15 @@ cd "$CURRENT_DIR"
 
 setopt nocasematch
 if [[ ! `uname` =~ "darwin" ]]; then
-  echo 'export BUNDLER_EDITOR="subl $@ >/dev/null 2>&1 -a"' >> zshrc
   CODE_PATH=~/Library/Application\ Support/Code/User
 else
   # Else, it's a Linux
-  bundler_editor="code -w"
-  echo "export BUNDLER_EDITOR=\"${bundler_editor}\"" >> zshrc
   CODE_PATH=~/.config/Code/User
 
   # If no folder, then it's WSL
   if [ ! -e $CODE_PATH ]; then
     CODE_PATH=~/.vscode-server/data/Machine
   fi
-fi
-
 fi
 
 zsh ~/.zshrc
