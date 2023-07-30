@@ -29,6 +29,7 @@ then
   echo "Swapping keys CTRL - CAPS LOCK..."
   # Add command to zshrc (will always be executed when zshrc is sourced)
   # The option might be `caps:swapcaps` in some cases
+  echo "\n# Swaps keys ctrl-caps" >> zshrc
   echo "setxkbmap -option caps:nocaps" >> zshrc
 
   # Alternative using gnome-tweaks
