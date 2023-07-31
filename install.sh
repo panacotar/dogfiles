@@ -36,6 +36,11 @@ then
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 fi
 
+# TODO
+# - Specify the exact files to symlink, instead of being dynamic
+# - Add documentation with every step
+# - Add section with initializing the ssh keys (manually)
+
 #!/bin/zsh
 for name in *; do
   if [ ! -d "$name" ]; then
