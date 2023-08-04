@@ -27,5 +27,5 @@ alias gimme='xdg-open'
 # Pull the changes from the current remote git branch
 alias gbpull='git pull origin "$(git_current_branch)"'
 
-# Test alias with args
-alias wrap_args='f(){ echo before "$@" after;  unset -f f; }; f'
+# Pass a hash to identifier
+alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f; }; f'
