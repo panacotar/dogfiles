@@ -29,3 +29,6 @@ alias gbpull='git pull origin "$(git_current_branch)"'
 
 # Pass a hash to identifier
 alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f; }; f'
+
+# Download the entire files in the directory
+alias downdir='wget -r --no-parent'
