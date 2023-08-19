@@ -149,5 +149,6 @@ export EDITOR='nano'
 export PATH=/usr/local/mysql/bin:$PATH
 export PATH=$GOPATH/bin:$PATH 
 export PATH=/opt/homebrew/bin:$PATH
+export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
