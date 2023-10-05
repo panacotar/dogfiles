@@ -22,7 +22,7 @@ then
 fi
 
 
-for name in aliases gitconfig zshrc pryrc; do
+for name in aliases gitconfig gitignore zshrc pryrc; do
   if [ ! -d "$name" ]; then
     echo $name
     target="$HOME/.$name"
