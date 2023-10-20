@@ -9,3 +9,6 @@
 [user]
     email = organicdarius@gmail.com
     name = Darius Pirvulescu
+
+[core]
+  excludesfile = /Users/darius/.gitignore
