@@ -2,4 +2,4 @@
 
 echo "Installing Mac"
 
-symlinkFiles=("zshrc" "aliases" "gitconfig" "gitignore" "pryrc";)
+symlinkFiles=("zshrc" "aliases" "gitconfig" "gitignore" "macos" "pryrc";)
