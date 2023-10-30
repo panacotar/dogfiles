@@ -24,6 +24,7 @@ symlink() {
   fi
 }
 
+# Choose the OS
 echo "Which system is this for? (linux/mac)"
 read os
 if [ $os = 'linux' ]; then
@@ -35,7 +36,7 @@ else
   exit 0
 fi
 
-echo "Are you sure you want to install ${bold}Linux/Win${normal} configs? (y/n)"
+echo "Are you sure you want to install ${bold}${(C)os}${normal} configs? (y/n)"
 read confirm
 
 if [ $confirm != 'y' ]
