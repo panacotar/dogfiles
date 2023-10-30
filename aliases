@@ -31,4 +31,27 @@ alias gbpull='git pull origin "$(git_current_branch)"'
 alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f; }; f'
 
 # Download the entire files in the directory
+# Might need to install wget:> (mac) brew install wget
 alias downdir='wget -r --no-parent'
+
+
+# Ex mac
+# Pulls from the develop branch
+unalias gpd
+alias gpod='git pull origin develop'
+
+# Opens rails server at port 5000
+alias rs5='rails s -p 5000'
+
+# Opens rails server at port 4000
+alias rs4='rails s -p 4000'
+
+# Creates an empty commit
+alias gcno='git commit --allow-empty -m "empty commit"'
+
+# Advicefront related
+alias advup='docker-compose --profile advisor up'
+alias boup='docker-compose --profile backoffice up'
+alias clup='docker-compose --profile client up'
+# # Runs a Shell command in docker
+alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
