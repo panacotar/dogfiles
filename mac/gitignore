@@ -1,7 +1,0 @@
-# Global gitignore config example
-
-# Node
-npm-debug.log
-
-# Mac
-.DS_Store
