@@ -9,4 +9,7 @@ git config --global user.name $full_name
 
 git remote add upstream git@github.com:DariusPirvulescu/dogfiles.git
 
+echo "Configuring global gitignore"
+git config --global core.excludesfile ~/.gitignore
+
 echo "👌 Awesome, all set."
