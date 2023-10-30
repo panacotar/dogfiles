@@ -1,9 +1,10 @@
 ZSH=$HOME/.oh-my-zsh
 
 # You can change the theme with another one from https://github.com/robbyrussell/oh-my-zsh/wiki/themes
-# "frisk"
 # "murilasso"
-ZSH_THEME="frisk"
+# ZSH_THEME="frisk"
+# ZSH_THEME="robbyrussell"
+ZSH_THEME="awesomepanda"
 
 # Useful oh-my-zsh plugins
 plugins=(git gitfast last-working-dir common-aliases history-substring-search ssh-agent colored-man-pages zsh-autosuggestions)
@@ -48,4 +49,10 @@ export PATH=/usr/local/mysql/bin:$PATH
 eval "$(rbenv init -)"
 
 export BUNDLER_EDITOR=code
-export EDITOR=nano
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH 
+
+export EDITOR='nano'
+
+export PATH=/opt/homebrew/bin:$PATH
+export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path

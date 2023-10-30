@@ -1,7 +1,10 @@
+#!/bin/zsh
 
 bold=$(tput bold)
 normal=$(tput sgr0)
 
+# Define a function which rename a `target` file to `target.backup` if the file
+# exists and if it's a 'real' file, ie not a symlink
 backup() {
   target=$1
   if [ -e "$target" ]; then           # Does the config file already exist?
@@ -12,6 +15,26 @@ backup() {
   fi
 }
 
+symlink() {
+  file=$1
+  link=$2
+  if [ ! -e "$link" ]; then
+    echo "-----> Symlinking your new $link"
+    ln -s $file $link
+  fi
+}
+
+echo "Which system is this for? (linux/mac)"
+read os
+if [ $os = 'linux' ]; then
+  source ./_install_linux.sh
+elif [ $os = 'mac' ]; then
+  source ./_install_mac.sh
+else
+  echo "Exiting..."
+  exit 0
+fi
+
 echo "Are you sure you want to install ${bold}Linux/Win${normal} configs? (y/n)"
 read confirm
 
@@ -21,38 +44,17 @@ then
   exit 0
 fi
 
-echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
-read key_swap_confim
-
-if [ $key_swap_confim = 'y' ]
-then
-  echo "Swapping keys CTRL - CAPS LOCK..."
-  # Add command to zshrc (will always be executed when zshrc is sourced)
-  # The option might be `caps:swapcaps` in some cases
-  echo "\n# Swaps keys ctrl-caps" >> zshrc
-  echo "setxkbmap -option caps:nocaps" >> zshrc
-
-  # Alternative using gnome-tweaks
-  # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
-fi
-
 # TODO
-# - Specify the exact files to symlink, instead of being dynamic
-# - Add documentation with every step
 # - Add section with initializing the ssh keys (manually)
 
-#!/bin/zsh
-for name in *; do
+# Backup the target file located at `~/.$name` and symlink `$name` to `~/.$name`
+# symlinkFiles different files based on the OS
+for name in ${symlinkFiles[@]}; do
   if [ ! -d "$name" ]; then
     target="$HOME/.$name"
-    if [[ ! "$name" =~ '\.sh$' ]] && [ "$name" != 'README.md' ]; then
-      backup $target
-
-      if [ ! -e "$target" ]; then
-        echo "-----> Symlinking your new $target"
-        ln -s "$PWD/$name" "$target"
-      fi
-    fi
+    backup $target
+    echo "-----> Symlinking your new $target"
+    symlink $PWD/$name $target
   fi
 done
 
@@ -60,19 +62,19 @@ REGULAR="\\033[0;39m"
 YELLOW="\\033[1;33m"
 GREEN="\\033[1;32m"
 
-# zsh plugins
+# Install zsh-syntax-highlighting plugin
 CURRENT_DIR=`pwd`
 ZSH_PLUGINS_DIR="$HOME/.oh-my-zsh/custom/plugins"
 mkdir -p "$ZSH_PLUGINS_DIR" && cd "$ZSH_PLUGINS_DIR"
 if [ ! -d "$ZSH_PLUGINS_DIR/zsh-syntax-highlighting" ]; then
   echo "-----> Installing zsh plugin 'zsh-syntax-highlighting'..."
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
-  git clone https://github.com/zsh-users/zsh-autosuggestions.git
+  git clone https://github.com/zsh-users/zsh-autosuggestions
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting
 fi
 cd "$CURRENT_DIR"
 
 setopt nocasematch
-if [[ ! `uname` =~ "darwin" ]]; then
+if [[ ! `uname` =~ "Darwin" ]]; then
   CODE_PATH=~/Library/Application\ Support/Code/User
 else
   # Else, it's a Linux
