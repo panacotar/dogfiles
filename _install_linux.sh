@@ -5,7 +5,6 @@ symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec")
 
 echo "Installing Linux"
 
-
 echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
 read key_swap_confim
 
@@ -20,3 +19,6 @@ then
   # Alternative using gnome-tweaks
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 fi
+
+trumpet "Installing sqlite3..."
+attempt_run sudo apt-get install sqlite3 libsqlite3-dev

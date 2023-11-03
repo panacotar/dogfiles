@@ -24,23 +24,40 @@ symlink() {
   fi
 }
 
-# Choose the OS
-echo "Which system is this for? (linux/mac)"
-read os
-if [ $os = 'linux' ]; then
-  source ./_install_linux.sh
-elif [ $os = 'mac' ]; then
-  source ./_install_mac.sh
-else
-  echo "Exiting..."
-  exit 0
-fi
+attempt_run() {
+  $* || (echo "\nfailed" 1>&2 && exit 1)
+}
+
+trumpet() {
+  echo "\n*** $1 ***"
+}
+
+# Detect the OS + exit if something other than Linux/(Darwin) MacOS
+detect_os() {
+  unameOut="$(uname -s)"
+  case "${unameOut}" in
+      Linux*)     os=linux;;
+      Darwin*)    os=mac;;
+      *)          echo "\n> install.sh not supporting OS: ${unameOut}\nExiting..." && exit 0
+  esac
+}
+detect_os
 
 echo "Are you sure you want to install ${bold}${(C)os}${normal} configs? (y/n)"
 read confirm
 
 if [ $confirm != 'y' ]
 then
+  echo "Exiting..."
+  exit 0
+fi
+
+# Instal OS specific stuff
+if [ $os = 'linux' ]; then
+  source ./_install_linux.sh
+elif [ $os = 'mac' ]; then
+  source ./_install_mac.sh
+else
   echo "Exiting..."
   exit 0
 fi
