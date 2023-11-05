@@ -29,7 +29,7 @@ attempt_run() {
 }
 
 trumpet() {
-  echo "\n*** $1 ***"
+  echo "\n*** $1 ***\n"
 }
 
 # Detect the OS + exit if something other than Linux/(Darwin) MacOS

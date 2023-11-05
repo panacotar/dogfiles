@@ -23,5 +23,8 @@ fi
 trumpet "Installing sqlite3..."
 attempt_run sudo apt-get install sqlite3 libsqlite3-dev
 
-trumpet "Installing xclip (clipboard copy)..."
+trumpet "Installing xclip (clipboard copy) + aliases with pbcopy..."
 attempt_run sudo apt-get install xclip
+# Emulate the pbcopy & pbpaste from Mac
+alias pbcopy='xclip -selection clipboard'
+alias pbpaste='xclip -selection clipboard -o'
