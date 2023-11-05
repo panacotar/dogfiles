@@ -22,3 +22,6 @@ fi
 
 trumpet "Installing sqlite3..."
 attempt_run sudo apt-get install sqlite3 libsqlite3-dev
+
+trumpet "Installing xclip (clipboard copy)..."
+attempt_run sudo apt-get install xclip
