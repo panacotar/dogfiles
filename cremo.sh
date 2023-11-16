@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# sets a new remote origin URL
+# Change REMote Origin - cremo.sh wow!
+# When run inside a local git repository, it sets a new remote origin URL
 function cremo() {
   if [ $# -eq 0 ]
     then
