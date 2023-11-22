@@ -16,6 +16,8 @@ function cremo() {
   
   # Set the new origin
   (git remote set-url origin $1)
+
+  # Print info
   echo "origin changed from:  $OLD"
   echo '                 ---                        '
   echo "origin changed   to:  $(git remote get-url origin)"
