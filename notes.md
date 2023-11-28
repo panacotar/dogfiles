@@ -25,9 +25,13 @@ Replace that default one:
 ```
 cp vscode/sync_settings/settings.yml ~/Library/Application\ Support/Code/User/globalStorage/zokugun.sync-settings/
 ```
-Or for linux:
+Or for Linux:
 ```
-cp ../../dogfiles/vscode/sync_settings/settings.yml ~/.config/Code/User/globalStorage/zokugun.sync-settings/  
+cp vscode/sync_settings/settings.yml ~/.config/Code/User/globalStorage/zokugun.sync-settings/  
+```
+Or for Windows:
+```
+cp vscode/sync_settings/settings.yml   ~/AppData/Roaming/Code/User/globalStorage/zokugun.sync-settings/
 ```
 
 It will ask to overwrite -> `y`. Open the VSCode command prompt and select: `Sync Settings - Download (repository -> user)`. A prompt should eventually appear, accept it and the VSCode will restart.
