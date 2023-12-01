@@ -21,7 +21,7 @@ chmod a+rx FILENAME
 ### Sync Settings - overwrite the default `settings.yml`
 First install the [Sync Settings](https://github.com/zokugun/vscode-sync-settings) extension. Which will create a `settings.yml` config file.
 
-Replace that default one:
+Replace that default file with your own from this repo:
 ```
 cp vscode/sync_settings/settings.yml ~/Library/Application\ Support/Code/User/globalStorage/zokugun.sync-settings/
 ```
