@@ -1,9 +1,8 @@
 #!/bin/zsh
 
+echo "Installing Linux"
 
 symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec")
-
-echo "Installing Linux"
 
 echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
 read key_swap_confim

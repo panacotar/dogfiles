@@ -107,3 +107,14 @@ fi
 zsh ~/.zshrc
 
 echo "👌  Carry on with git setup!"
+
+
+: '
+  To install packages (common):
+gpg
+tig
+code
+nodejs
+postgresql
+rbenv
+'
