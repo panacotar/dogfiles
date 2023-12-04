@@ -17,6 +17,21 @@ chmod u+x FILENAME
 #### by all users
 chmod a+rx FILENAME
 
+## Specify the SSH key to use
+By default, on my config, Github will use the SSH key at `~/.ssh/id_ed25519`.
+But if I gave the key a different name (ex `github_id_ed25519`), I need to speciy which name.   
+I should create a file in `~/.ssh/`
+
+```
+Host github.com
+  AddKeysToAgent yes
+  IgnoreUnknown UseKeychai
+  UseKeychain yes
+  IdentityFile ~/.ssh/github_id_ed25519
+
+```
+
+
 ## VS code
 ### Sync Settings - overwrite the default `settings.yml`
 First install the [Sync Settings](https://github.com/zokugun/vscode-sync-settings) extension. Which will create a `settings.yml` config file.

@@ -11,13 +11,14 @@ if [ $key_swap_confim = 'y' ]
 then
   echo "Swapping keys CTRL - CAPS LOCK..."
   # Add command to zshrc (will always be executed when zshrc is sourced)
-  # The option might be `caps:swapcaps` in some cases
+  # The option might be `caps:nocaps` in some cases
   echo "\n# Swaps keys ctrl-caps" >> zshrc
-  echo "setxkbmap -option caps:nocaps" >> zshrc
+  echo "eval 'setxkbmap -option ctrl:swapcaps'" >> zshrc
 
-  backup "$HOME/.xmodmap"
-  symlink "$PWD/xmodmap" "$HOME/.xmodmap"
-  echo 'xmodmap ~/.xmodmap' >> zshrc
+  # Alternative using xmodmap config file
+  # backup "$HOME/.xmodmap"
+  # symlink "$PWD/xmodmap" "$HOME/.xmodmap"
+  # echo "eval 'xmodmap ~/.xmodmap'" >> zshrc
 
   # Alternative using gnome-tweaks
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
@@ -34,3 +35,6 @@ alias pbpaste='xclip -selection clipboard -o'
 
 trumpet "Installing libavcodec-extra"
 attempt_run sudo apt install libavcodec-extra -y
+
+trumpet "Installing cewl, crunch, wfuzz"
+attempt_run sudo apt-get install cewl crunch wfuzz -y

@@ -71,7 +71,6 @@ for name in ${symlinkFiles[@]}; do
   if [ ! -d "$name" ]; then
     target="$HOME/.$name"
     backup $target
-    echo "-----> Symlinking your new $target"
     symlink $PWD/$name $target
   fi
 done
@@ -113,6 +112,8 @@ echo "👌  Carry on with git setup!"
   To install packages (common):
 gpg
 tig
+tree
+htop
 code
 nodejs
 postgresql
