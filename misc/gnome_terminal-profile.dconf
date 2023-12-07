@@ -1,15 +1,17 @@
 [/]
-audible-bell=true
-background-color='rgb(0,43,54)'
-cursor-blink-mode='on'
+audible-bell=false
+background-color='#282A36'
+bold-color='#6E46A4'
+bold-color-same-as-fg=false
+cursor-blink-mode='off'
 cursor-colors-set=false
-cursor-shape='underline'
+cursor-shape='block'
 default-size-columns=135
-font='Monospace 13'
-foreground-color='rgb(225,237,239)'
+font='Noto Mono 11'
+foreground-color='#F8F8F2'
 highlight-colors-set=false
 highlight-foreground-color='rgb(207,100,100)'
-palette=['rgb(116,123,116)', 'rgb(220,50,47)', 'rgb(131,138,22)', 'rgb(181,137,0)', 'rgb(39,167,34)', 'rgb(211,54,130)', 'rgb(7,249,231)', 'rgb(192,188,179)', 'rgb(87,91,93)', 'rgb(203,75,22)', 'rgb(88,110,117)', 'rgb(101,123,131)', 'rgb(131,148,150)', 'rgb(108,113,196)', 'rgb(211,232,232)', 'rgb(210,204,187)']
-use-system-font=true
+palette=['#262626', '#E356A7', '#42E66C', '#E4F34A', '#9B6BDF', '#E64747', '#75D7EC', '#EFA554', '#7A7A7A', '#FF79C6', '#50FA7B', '#F1FA8C', '#BD93F9', '#FF5555', '#8BE9FD', '#FFB86C']
+use-system-font=false
 use-theme-colors=false
 visible-name='Dario'
