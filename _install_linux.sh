@@ -24,6 +24,12 @@ then
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 fi
 
+trumpet "Update the list of available packages + versions..."
+attempt_run sudo apt update
+
+trumpet "Upgrade the installed packages..."
+attempt_run sudo apt upgrade
+
 trumpet "Installing sqlite3..."
 attempt_run sudo apt-get install -y sqlite3 libsqlite3-dev
 
