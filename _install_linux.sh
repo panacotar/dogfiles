@@ -44,3 +44,12 @@ attempt_run sudo apt install libavcodec-extra -y
 
 trumpet "Installing cewl, crunch, wfuzz"
 attempt_run sudo apt-get install cewl crunch wfuzz -y
+
+trumpet "Installing tldr..."
+attempt_run sudo apt-get install tldr -y
+
+trumpet "Updating tldr..."
+attempt_run tldr -u
+
+trumpet "Config mozilla smooth scrolling"
+attempt_run echo export MOZ_USE_XINPUT2=1 | sudo tee /etc/profile.d/use-xinput2.sh
