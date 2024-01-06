@@ -9,6 +9,9 @@ ZSH_THEME="awesomepanda"
 # Useful oh-my-zsh plugins
 plugins=(git gitfast last-working-dir common-aliases history-substring-search ssh-agent colored-man-pages zsh-autosuggestions)
 
+# Prevent adding to history commands which are prefixed by a space
+setopt HIST_IGNORE_SPACE
+
 # (macOS-only) Prevent Homebrew from reporting - https://github.com/Homebrew/brew/blob/master/share/doc/homebrew/Analytics.md
 export HOMEBREW_NO_ANALYTICS=1
 ZSH_DISABLE_COMPFIX=true
@@ -56,3 +59,6 @@ export EDITOR='nano'
 
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
+
+# Swaps keys ctrl-caps
+eval 'setxkbmap -option ctrl:swapcaps'
