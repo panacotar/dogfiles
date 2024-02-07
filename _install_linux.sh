@@ -30,6 +30,9 @@ attempt_run sudo apt update
 trumpet "Upgrade the installed packages..."
 attempt_run sudo apt upgrade
 
+trumpet "Installing fingerprint scanner..."
+attempt_run sudo apt install fprintd libpam-fprintd -y
+
 trumpet "Installing sqlite3..."
 attempt_run sudo apt-get install -y sqlite3 libsqlite3-dev
 
