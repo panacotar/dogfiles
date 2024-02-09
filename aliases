@@ -34,6 +34,11 @@ alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f
 # Might need to install wget:> (mac) brew install wget
 alias downdir='wget -r --no-parent'
 
+# Emulate the pbcopy & pbpaste from Mac
+alias pbcopy='xclip -selection clipboard'
+alias pbpaste='xclip -selection clipboard -o'
+
+alias xclip='xclip -sel c'
 
 # Ex mac
 # Pulls from the develop branch
