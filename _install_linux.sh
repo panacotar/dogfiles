@@ -38,9 +38,6 @@ attempt_run sudo apt-get install -y sqlite3 libsqlite3-dev
 
 trumpet "Installing xclip (clipboard copy) + aliases with pbcopy..."
 attempt_run sudo apt-get install xclip
-# Emulate the pbcopy & pbpaste from Mac
-alias pbcopy='xclip -selection clipboard'
-alias pbpaste='xclip -selection clipboard -o'
 
 trumpet "Installing libavcodec-extra"
 attempt_run sudo apt install libavcodec-extra -y
