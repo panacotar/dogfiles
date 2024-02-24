@@ -31,6 +31,9 @@ Host github.com
 
 ```
 
+## Brief doc on using `vnstat`
+https://askubuntu.com/a/846455
+
 ## Disable Firefox menu bar toggle on ALT key press
 By default, pressing the ALT key will toggle the Firefox menu bar (Linux + Windows).   
 To disable this, you can search for `about:config` in Firefox, and then search for `ui.key.menuAccessKeyFocuses` and set its value to `false`.   
