@@ -60,3 +60,6 @@ attempt_run curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
   echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
   sudo tee /etc/apt/sources.list.d/ngrok.list && \
   sudo apt update && sudo apt install ngrok
+
+trumpet "Specify the Broadcast RGB (for external monitors)\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
+attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
