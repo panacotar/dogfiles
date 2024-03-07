@@ -60,3 +60,8 @@ cp vscode/sync_settings/settings.yml   ~/AppData/Roaming/Code/User/globalStorage
 It will ask to overwrite -> `y`. Open the VSCode command prompt and select: `Sync Settings - Download (repository -> user)`. A prompt should eventually appear, accept it and the VSCode will restart.
 
 Make sure to upload the `hostname` in the settings.yml file to the current machine.
+
+
+## Codium
+### Alias in WSL
+alias codium="/mnt/c/Users/Username/AppData/Local/Programs/VSCodium/VSCodium.exe" 
