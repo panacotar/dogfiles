@@ -19,7 +19,7 @@ chmod a+rx FILENAME
 
 ## Specify the SSH key to use
 By default, on my config, Github will use the SSH key at `~/.ssh/id_ed25519`.
-But if I gave the key a different name (ex `github_id_ed25519`), I need to speciy which name.   
+But if I gave the key a different name (ex `github_id_ed25519`), I need to specify which name.   
 I should create a file (called `config`) in `~/.ssh/`
 
 ```
