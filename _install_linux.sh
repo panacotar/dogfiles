@@ -51,15 +51,24 @@ attempt_run sudo apt-get install tldr -y
 trumpet "Updating tldr..."
 attempt_run tldr -u
 
-trumpet "Config mozilla smooth scrolling"
+trumpet "Config mozilla smooth scrolling..."
 attempt_run echo export MOZ_USE_XINPUT2=1 | sudo tee /etc/profile.d/use-xinput2.sh
 
-trumpet "Install ngrok"
+trumpet "Install ngrok..."
 attempt_run curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
   | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
 attempt_run echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
   | sudo tee /etc/apt/sources.list.d/ngrok.list
 attempt_run sudo apt update && sudo apt install ngrok
 
-trumpet "Specify the Broadcast RGB (for external monitors)\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
+trumpet "Specify the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
 attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
+
+trumpet "Install VSCodium..."
+attempt_run wget -qO - https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg \
+  | gpg --dearmor \
+  | sudo dd of=/usr/share/keyrings/vscodium-archive-keyring.gpg
+attempt_run echo 'deb [ signed-by=/usr/share/keyrings/vscodium-archive-keyring.gpg ] https://download.vscodium.com/debs vscodium main' \
+  | sudo tee /etc/apt/sources.list.d/vscodium.list
+attempt_run sudo apt update && sudo apt install codium
+
