@@ -7,6 +7,9 @@ symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec")
 echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
 read key_swap_confim
 
+echo "Do you want to install DBeaver (y/n)"
+read dbeaver_confirm
+
 if [ $key_swap_confim = 'y' ]
 then
   echo "Swapping keys CTRL - CAPS LOCK..."
@@ -24,7 +27,14 @@ then
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 fi
 
-trumpet "Update the list of available packages + versions..."
+if [ $dbeaver_confirm = 'y' ]
+then
+  trumpet "Install DBeaver..."
+  attempt_run sudo  wget -O /usr/share/keyrings/dbeaver.gpg.key https://dbeaver.io/debs/dbeaver.gpg.key
+  attempt_run echo "deb [signed-by=/usr/share/keyrings/dbeaver.gpg.key] https://dbeaver.io/debs/dbeaver-ce /" | sudo tee /etc/apt/sources.list.d/dbeaver.list
+  attempt_run sudo apt-get update && sudo apt-get install dbeaver-ce
+fi
+
 attempt_run sudo apt update
 
 trumpet "Upgrade the installed packages..."
