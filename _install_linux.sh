@@ -73,12 +73,3 @@ attempt_run sudo apt update && sudo apt install ngrok
 
 trumpet "Specify the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
 attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
-
-trumpet "Install VSCodium..."
-attempt_run wget -qO - https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg \
-  | gpg --dearmor \
-  | sudo dd of=/usr/share/keyrings/vscodium-archive-keyring.gpg
-attempt_run echo 'deb [ signed-by=/usr/share/keyrings/vscodium-archive-keyring.gpg ] https://download.vscodium.com/debs vscodium main' \
-  | sudo tee /etc/apt/sources.list.d/vscodium.list
-attempt_run sudo apt update && sudo apt install codium
-

@@ -40,7 +40,7 @@ To disable this, you can search for `about:config` in Firefox, and then search f
 
 You can also change the default for `ui.key.menuAccessKey` config (it should have a value of `18`). Replace its value to `20` (Caps Lock).
 
-## VSCodium
+## VSCode
 ### Sync Settings - overwrite the default `settings.yml`
 First install the [Sync Settings](https://github.com/zokugun/vscode-sync-settings) extension. Which will create a `settings.yml` config file.
 
@@ -48,19 +48,15 @@ Replace that default file with your own from this repo:
 **Note:** Make sure to upload the `hostname` in the settings.yml file to the current machine.
 
 ```
-cp vscodium/sync_settings/settings.yml ~/Library/Application\ Support/VSCodium/User/globalStorage/zokugun.sync-settings/
+cp vscode/sync_settings/settings.yml ~/Library/Application\ Support/Code/User/globalStorage/zokugun.sync-settings/
 ```
 Or for Linux:
 ```
-cp vscodium/sync_settings/settings.yml ~/.config/VSCodium/User/globalStorage/zokugun.sync-settings/  
+cp vscode/sync_settings/settings.yml ~/.config/Code/User/globalStorage/zokugun.sync-settings/  
 ```
 Or for Windows:
 ```
-cp vscodium/sync_settings/settings.yml   ~/AppData/Roaming/VSCodium/User/globalStorage/zokugun.sync-settings/
+cp vscode/sync_settings/settings.yml   ~/AppData/Roaming/Code/User/globalStorage/zokugun.sync-settings/
 ```
 
-It will ask to overwrite -> `y`. Open the VSCodium command prompt and select: `Sync Settings - Download (repository -> user)`. A prompt should eventually appear, accept it and the VSCodium will restart.
-
-## Codium
-### Alias in WSL
-alias codium="/mnt/c/Users/Username/AppData/Local/Programs/VSCodium/VSCodium.exe" 
+It will ask to overwrite -> `y`. Open the VSCode command prompt and select: `Sync Settings - Download (repository -> user)`. A prompt should eventually appear, accept it and the VSCode will restart.
