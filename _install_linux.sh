@@ -35,9 +35,10 @@ then
   attempt_run sudo apt-get update && sudo apt-get install dbeaver-ce
 fi
 
+trumpet "Updating the list of available packages + versions..."
 attempt_run sudo apt update
 
-trumpet "Upgrade the installed packages..."
+trumpet "Upgrading the installed packages..."
 attempt_run sudo apt upgrade
 
 trumpet "Installing fingerprint scanner..."
@@ -61,15 +62,15 @@ attempt_run sudo apt-get install tldr -y
 trumpet "Updating tldr..."
 attempt_run tldr -u
 
-trumpet "Config mozilla smooth scrolling..."
+trumpet "Configuring mozilla smooth scrolling..."
 attempt_run echo export MOZ_USE_XINPUT2=1 | sudo tee /etc/profile.d/use-xinput2.sh
 
-trumpet "Install ngrok..."
+trumpet "Installing ngrok..."
 attempt_run curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
   | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
 attempt_run echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
   | sudo tee /etc/apt/sources.list.d/ngrok.list
 attempt_run sudo apt update && sudo apt install ngrok
 
-trumpet "Specify the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
+trumpet "Specifying the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
 attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
