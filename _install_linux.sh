@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-echo "Installing Linux"
+echo "#####   Installing Linux   #####"
 
 symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec")
 
@@ -74,3 +74,8 @@ attempt_run sudo apt update && sudo apt install ngrok
 
 trumpet "Specifying the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
 attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
+
+trumpet "Installing nmap..."
+attempt_run sudo apt-get install nmap -y
+
+
