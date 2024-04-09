@@ -78,4 +78,7 @@ attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprof
 trumpet "Installing nmap..."
 attempt_run sudo apt-get install nmap -y
 
+trumpet "Installing wpscan..."
+attempt_run sudo apt install ruby-dev -y
+attempt_run sudo gem install wpscan
 
