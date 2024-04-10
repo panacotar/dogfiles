@@ -17,4 +17,7 @@ trumpet "Installing wpscan..."
 attempt_run brew install wpscanteam/tap/wpscan
 attempt_run brew install wpscanteam/tap/wpscan --HEAD
 
+trumpet "Installing nikto..."
+attempt_run brew install nikto
+
 echo "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."
