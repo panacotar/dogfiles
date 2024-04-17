@@ -3,6 +3,9 @@
 bold=$(tput bold)
 normal=$(tput sgr0)
 
+# Go version to install
+GO_VERSION=1.22.0
+
 # Define a function which rename a `target` file to `target.backup` if the file
 # exists and if it's a 'real' file, ie not a symlink
 backup() {
@@ -30,6 +33,10 @@ attempt_run() {
 
 trumpet() {
   echo "\n*** $1 ***\n"
+}
+
+progress_comm() {
+  echo "\n\n-->$1 \n"
 }
 
 # Detect the OS + exit if something other than Linux/(Darwin) MacOS

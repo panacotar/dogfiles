@@ -85,3 +85,13 @@ attempt_run sudo gem install wpscan
 trumpet "Installing nikto (the git version)..."
 attempt_run git clone https://github.com/sullo/nikto ~/code/misc/nikto
 
+trumpet "Installing Go..."
+progress_comm "Downloading Go tar archive"
+attempt_run wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
+progress_comm "Remove previous Go installations"
+rm -rf /usr/local/go
+progress_comm "Extract the tar archive"
+attempt_run tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+progress_comm "Remove the tar archive"
+rm go${GO_VERSION}.linux-amd64.tar.gz
+
