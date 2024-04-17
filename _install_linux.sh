@@ -82,5 +82,6 @@ trumpet "Installing wpscan..."
 attempt_run sudo apt install ruby-dev -y
 attempt_run sudo gem install wpscan
 
-trumpet "Installing nikto..."
-attempt_run sudo apt install nikto -y
+trumpet "Installing nikto (the git version)..."
+attempt_run git clone https://github.com/sullo/nikto ~/code/misc/nikto
+
