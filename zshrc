@@ -54,6 +54,8 @@ eval "$(rbenv init -)"
 export BUNDLER_EDITOR=code
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$PATH 
+# New Go installation
+export PATH=$PATH:/usr/local/go/bin
 
 export EDITOR='nano'
 
