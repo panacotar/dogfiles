@@ -95,3 +95,6 @@ attempt_run tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 progress_comm "Remove the tar archive"
 rm go${GO_VERSION}.linux-amd64.tar.gz
 
+trumpet "Installing gobuster..."
+attempt_run go install github.com/OJ/gobuster/v3@latest
+
