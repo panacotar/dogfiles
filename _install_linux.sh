@@ -2,7 +2,7 @@
 
 echo "#####   Installing Linux   #####"
 
-symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec")
+symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec" "tmux.conf")
 
 echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
 read key_swap_confim
@@ -98,3 +98,6 @@ rm go${GO_VERSION}.linux-amd64.tar.gz
 trumpet "Installing gobuster..."
 attempt_run go install github.com/OJ/gobuster/v3@latest
 
+
+trumpet "Installing tmux..."
+attempt_run sudo apt install tmux -y

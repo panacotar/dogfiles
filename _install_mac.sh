@@ -2,7 +2,7 @@
 
 echo "#####   Installing Mac   #####"
 
-symlinkFiles=("zshrc" "aliases" "gitconfig" "gitignore" "macos" "pryrc";)
+symlinkFiles=("zshrc" "aliases" "gitconfig" "gitignore" "macos" "pryrc" "tmux.conf";)
 
 trumpet "Installing tldr..."
 attempt_run brew install tldr
