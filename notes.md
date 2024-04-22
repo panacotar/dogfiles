@@ -60,3 +60,17 @@ cp vscode/sync_settings/settings.yml   ~/AppData/Roaming/Code/User/globalStorage
 ```
 
 It will ask to overwrite -> `y`. Open the VSCode command prompt and select: `Sync Settings - Download (repository -> user)`. A prompt should eventually appear, accept it and the VSCode will restart.
+
+## tmux
+Common **commands**:
+- `tmux` - start a tmux session
+- `tmux ls` - list active sessions
+- `tmux attach-session -t {session_index}` attach to existing session
+- `tmux kill-session -t {session_index}`
+
+Some common defaults **shortcuts** (`C-b` = CTRL+b):
+- `C-b + %` - horizontal split
+- `C-b + "` - vertical split
+- `C-b + {arrow_key}` - switch to the pane
+- `C-b + d` - detach from the current session
+- `C-b + c` - create a new window 
