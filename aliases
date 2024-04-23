@@ -59,3 +59,19 @@ alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
 
 # Nikto alias
 alias nikto=~/code/misc/nikto/program/nikto.pl
+
+####################
+# tmux
+####################
+
+# Attaches tmux to the last session; creates a new session if none exists.
+alias t='tmux attach || tmux new-session'
+
+# Attaches tmux to a session (example: ta portal)
+alias ta='tmux attach -t'
+
+# Creates a new session
+alias tns='tmux new-session'
+
+# Kills session
+alias tks='tmux kill-session -t'
