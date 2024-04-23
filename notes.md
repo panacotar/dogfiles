@@ -63,14 +63,18 @@ It will ask to overwrite -> `y`. Open the VSCode command prompt and select: `Syn
 
 ## tmux
 Common **commands**:
-- `tmux` - start a tmux session
+- `tmux` (aliased to `tns`) - start a new tmux session
 - `tmux ls` - list active sessions
-- `tmux attach-session -t {session_index}` attach to existing session
+- `tmux attach-session -t {session_index}` (aliased to `ta #`)- attach to existing session
 - `tmux kill-session -t {session_index}`
 
 Some common defaults **shortcuts** (`C-b` = CTRL+b):
 - `C-b + %` - horizontal split
 - `C-b + "` - vertical split
 - `C-b + {arrow_key}` - switch to the pane
-- `C-b + d` - detach from the current session
-- `C-b + c` - create a new window 
+- `C-b + x` - kill current pane
+- `C-b + d` (aliased to `C-d`) - detach from the current session
+- `C-b + c` - create a new window
+- `C-b + {#}` - switch to the window with index {#}
+- `C-b + n/p` - switch to the `n`ext/`p`revious window
+- `C-b + l` - switch to the last active window
