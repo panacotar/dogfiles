@@ -40,6 +40,18 @@ To disable this, you can search for `about:config` in Firefox, and then search f
 
 You can also change the default for `ui.key.menuAccessKey` config (it should have a value of `18`). Replace its value to `20` (Caps Lock).
 
+## Terminate a process after a certain time
+The `timeout` command can be used to terminate a process after some time. You need to prepend it to your command, example for the `openvpn` command:
+```
+timeout {SECONDS}s openvpn ~/path/to/config_file
+```
+Instead of `s`, use `h` for hours or `d` for days.
+By default, `timeout` will send a SIGTERM signal, but you can send another signal, example SIGKILL:
+
+```
+timeout --signal SIGKILL {SECONDS} openvpn ~/path/to/config_file
+```
+
 ## VSCode
 ### Sync Settings - overwrite the default `settings.yml`
 First install the [Sync Settings](https://github.com/zokugun/vscode-sync-settings) extension. Which will create a `settings.yml` config file.
