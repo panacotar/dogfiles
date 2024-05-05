@@ -57,7 +57,7 @@ export PATH=$GOPATH/bin:$PATH
 # New Go installation
 export PATH=$PATH:/usr/local/go/bin
 
-export EDITOR='nano'
+export EDITOR='vim'
 
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
