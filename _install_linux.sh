@@ -98,6 +98,8 @@ rm go${GO_VERSION}.linux-amd64.tar.gz
 trumpet "Installing gobuster..."
 attempt_run go install github.com/OJ/gobuster/v3@latest
 
+trumpet "Installing seclist..."
+attempt_run sudo apt-get install seclists
 
 trumpet "Installing tmux..."
 attempt_run sudo apt install tmux -y
