@@ -75,3 +75,5 @@ alias tns='tmux new-session'
 
 # Kills session
 alias tks='tmux kill-session -t'
+
+alias sa='exec zsh;echo "ZSH aliases sourced."'
