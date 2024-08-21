@@ -20,4 +20,7 @@ attempt_run brew install wpscanteam/tap/wpscan --HEAD
 trumpet "Installing nikto..."
 attempt_run brew install nikto
 
+trumpet "Installing lazygit..."
+attempt_run brew install lazygit
+
 echo "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."
