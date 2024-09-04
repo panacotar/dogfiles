@@ -24,9 +24,6 @@ alias greq='gh pr create -fw -a @me'
 # Opens file in xdg (notepad)
 alias gimme='xdg-open'
 
-# Pull the changes from the current remote git branch
-alias gbpull='git pull origin "$(git_current_branch)"'
-
 # Pass a hash to identifier
 alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f; }; f'
 
@@ -40,7 +37,7 @@ alias pbpaste='xclip -selection clipboard -o'
 
 alias xclip='xclip -sel c'
 
-# Ex mac
+###### Git
 # Pulls from the develop branch
 unalias gpd
 alias gpod='git pull origin develop'
@@ -53,6 +50,12 @@ alias rs4='rails s -p 4000'
 
 # Creates an empty commit
 alias gcno='git commit --allow-empty -m "empty commit"'
+
+# Pull the changes from the current remote git branch
+alias gbpull='git pull origin "$(git_current_branch)"'
+
+# Lazygit
+alias lg='lazygit'
 
 # # Runs a Shell command in docker
 alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
