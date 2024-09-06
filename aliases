@@ -48,6 +48,9 @@ alias gcno='git commit --allow-empty -m "empty commit"'
 # Pull the changes from the current remote git branch
 alias gbpull='git pull origin "$(git_current_branch)"'
 
+# Sync main with upstream/main
+alias sup='git fetch upstream; git checkout main; git merge upstream/main; git push origin main'
+
 # Lazygit
 alias lg='lazygit'
 
