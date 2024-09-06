@@ -42,12 +42,6 @@ alias xclip='xclip -sel c'
 unalias gpd
 alias gpod='git pull origin develop'
 
-# Opens rails server at port 5000
-alias rs5='rails s -p 5000'
-
-# Opens rails server at port 4000
-alias rs4='rails s -p 4000'
-
 # Creates an empty commit
 alias gcno='git commit --allow-empty -m "empty commit"'
 
@@ -62,6 +56,12 @@ alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
 
 # Nikto alias
 alias nikto=~/code/misc/nikto/program/nikto.pl
+
+# Opens rails server at port 5000
+alias rs5='rails s -p 5000'
+
+# Opens rails server at port 4000
+alias rs4='rails s -p 4000'
 
 ####################
 # tmux
