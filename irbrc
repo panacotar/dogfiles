@@ -7,11 +7,11 @@ end
 # Exit with `q`
 alias q exit
 
-module Kernel
-    def q
-        exit
-    end
-end
+# module Kernel
+#     def q
+#         exit
+#     end
+# end
 
 # bindkey '^H' backward-kill-word
 
