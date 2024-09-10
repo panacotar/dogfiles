@@ -2,14 +2,32 @@
 tar --exclude='node_modules' --exclude='tmp' --exclude='package-lock.json' --exclude='yarn.lock' -cvf home_backup.tar ~/*
 
 ### Get terminal Profile
+```
 dconf dump /org/gnome/terminal/legacy/profiles:/
+```
 
 ### Export one of the profiles 
 ### (for example the one with id: :1430663d-083b-4737-a7f5-8378cc8226d1 )
+```
 dconf dump /org/gnome/terminal/legacy/profiles:/:1430663d-083b-4737-a7f5-8378cc8226d1/ > my-custom-profile.dconf
+```
 
 ### Load an existing profile
+```
 dconf load /org/gnome/terminal/legacy/profiles:/:1430663d-083b-4737-a7f5-8378cc8226d1/ < my-custom-profile.dconf
+```
+
+### Load keybinding
+```sh
+# Load custom keybinding
+dconf dump /org/gnome/terminal/legacy/keybindings/
+
+# Read one of the keys
+dconf read /org/gnome/terminal/legacy/keybindings/close-tab
+
+# Write a new custom keybinding
+dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
+```
 
 ### Make a shell file executable 
 #### by the owner

@@ -27,6 +27,9 @@ then
   # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 fi
 
+# Change close-tab keybinding in the terminal
+dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
+
 if [ $dbeaver_confirm = 'y' ]
 then
   trumpet "Install DBeaver..."
