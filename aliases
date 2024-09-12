@@ -52,7 +52,7 @@ alias gcno='git commit --allow-empty -m "empty commit"'
 alias gbpull='git pull origin "$(git_current_branch)"'
 
 # Sync main with upstream/main
-alias gsup='git fetch upstream; git checkout main; git merge upstream/main; git push origin main'
+alias gsup='git fetch upstream && git checkout main && git merge upstream/main; git push origin main'
 
 # Lazygit
 alias lg='lazygit'
