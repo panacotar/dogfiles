@@ -54,22 +54,30 @@ alias gbpull='git pull origin "$(git_current_branch)"'
 # Sync main with upstream/main
 alias gsup='git fetch upstream && git checkout main && git merge upstream/main; git push origin main'
 
-# Lazygit
-alias lg='lazygit'
-
-# # Runs a Shell command in docker
-alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
-
-# Nikto alias
-alias nikto=~/code/misc/nikto/program/nikto.pl
-
+###### Rails
 # Opens rails server at port 5000
 alias rs5='rails s -p 5000'
 
 # Opens rails server at port 4000
 alias rs4='rails s -p 4000'
 
-####################
+# Opens the rails console (it will save me 1 min my whole life)
+alias rac='rails c'
+
+###### Misc
+# Lazygit
+alias lg='lazygit'
+
+# Opens lazygit for dogfiles
+alias ldog='lazygit -p ~/code/darius/dogfiles/' 
+
+# Runs a Shell command in docker
+alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
+
+# Nikto alias
+alias nikto=~/code/misc/nikto/program/nikto.pl
+
+###################
 # tmux
 ####################
 
