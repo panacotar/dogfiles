@@ -9,3 +9,25 @@ function lay() {
    echo "export $1=$2" | tee -a /tmp/shared_vars.sh
 }
 
+# # Change REMote Origin - cremo.sh wow!
+# # When run inside a local git repository, it sets a new remote origin URL
+# function cremo() {
+#   if [ $# -eq 0 ]
+#     then
+#       echo "No arguments supplied"
+#       exit 1
+#   fi
+#   echo 'Changing remote origin...'
+#   echo ' '
+  
+#   # Get the old origin
+#   OLD=$(git remote get-url origin)
+  
+#   # Set the new origin
+#   (git remote set-url origin $1)
+
+#   # Print info
+#   echo "origin changed from:  $OLD"
+#   echo '                 ---                        '
+#   echo "origin changed   to:  $(git remote get-url origin)"
+# }
