@@ -2,7 +2,7 @@
 
 echo "#####   Installing Linux   #####"
 
-symlinkFiles=("zshrc" "aliases" "gitconfig" "irbrc" "rspec" "tmux.conf")
+symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "irbrc" "rspec" "tmux.conf")
 
 echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
 read key_swap_confim

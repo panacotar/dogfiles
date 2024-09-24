@@ -19,6 +19,8 @@ ZSH_DISABLE_COMPFIX=true
 # Actually load Oh-My-Zsh
 source "${ZSH}/oh-my-zsh.sh"
 unalias rm # No interactive rm by default (brought by plugins/common-aliases)
+source "${HOME}/.custom_commands.sh"
+[[ -f "/tmp/shared_vars.sh" ]] && source "/tmp/shared_vars.sh"
 
 # Load rbenv if installed (To manage your Ruby versions)
 export PATH="${HOME}/.rbenv/bin:${PATH}" # Needed for Linux/WSL
