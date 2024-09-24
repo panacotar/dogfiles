@@ -20,7 +20,6 @@ ZSH_DISABLE_COMPFIX=true
 source "${ZSH}/oh-my-zsh.sh"
 unalias rm # No interactive rm by default (brought by plugins/common-aliases)
 source "${HOME}/.custom_commands.sh"
-[[ -f "/tmp/shared_vars.sh" ]] && source "/tmp/shared_vars.sh"
 
 # Load rbenv if installed (To manage your Ruby versions)
 export PATH="${HOME}/.rbenv/bin:${PATH}" # Needed for Linux/WSL
@@ -69,3 +68,5 @@ export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn t
 
 # Swaps keys ctrl-caps
 eval 'setxkbmap -option ctrl:swapcaps'
+
+
