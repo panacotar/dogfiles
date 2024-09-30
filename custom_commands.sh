@@ -6,7 +6,7 @@ function lay() {
        echo -e "You need to specify two arguments.\n\nusage: lay <VARIABLE_NAME> <VARIABLE_VALUE>"
        return 1
    fi
-   echo "export $1=$2" | tee -a ~/.zshenv
+   echo "export $1=$2" | tee -a ~/.zshenv && exec zsh
 }
 
 # # Change REMote Origin - cremo.sh wow!
