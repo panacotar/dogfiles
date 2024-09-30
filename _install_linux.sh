@@ -113,3 +113,9 @@ attempt_run curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/re
 tar xf lazygit.tar.gz lazygit
 attempt_run sudo install lazygit /usr/local/bin
 rm lazygit.tar.gz lazygit 
+
+trumpet "Installing hashcat..."
+attept_run sudo apt install hashcat
+
+trumpet "Installing impacket..."
+attempt_run sudo apt install python3-impacket
