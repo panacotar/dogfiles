@@ -1,5 +1,5 @@
 # current machine's name, optional; it can be used to filter settings or in the commit message
-hostname: "mac-m1"
+hostname: "mint-lg"
 # more details at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/hostname.md
 
 # selected profile, required
@@ -36,7 +36,7 @@ profile: main
 repository:
   type: git
   # url of the remote git repository to sync with, required
-  url: git@github.com:DariusPirvulescu/vscode-sync-settings.git
+  url: git@github.com:panacotar/vscode-sync-settings.git
   # branch to sync on, optional (set to `master` by default)
   branch: master
   # how to personalize the commit messages at https://github.com/zokugun/vscode-sync-settings/blob/master/docs/commit-messages.md
