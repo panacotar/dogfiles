@@ -4,10 +4,10 @@ echo "#####   Installing Linux   #####"
 
 symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "irbrc" "rspec" "tmux.conf")
 
-echo "Do you want to swap CTRL - CAPS LOCK keys (y/n)"
+echo "Do you want to swap CTRL - CAPS LOCK keys? (y/n)"
 read key_swap_confim
 
-echo "Do you want to install DBeaver (y/n)"
+echo "Do you want to install DBeaver? (y/n)"
 read dbeaver_confirm
 
 if [ $key_swap_confim = 'y' ]
