@@ -1,5 +1,6 @@
 #!/bin/zsh
 
+echo "##############################"
 echo "#####   Installing Mac   #####"
 
 symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "gitignore" "macos" "pryrc" "tmux.conf";)
@@ -9,6 +10,13 @@ attempt_run brew install tldr
 
 trumpet "Updating tldr..."
 attempt_run tldr -u
+
+trumpet "Installing lazygit..."
+attempt_run brew install lazygit
+
+###################
+# Sec
+####################
 
 trumpet "Installing nmap..."
 attempt_run brew install nmap
@@ -20,7 +28,5 @@ attempt_run brew install wpscanteam/tap/wpscan --HEAD
 trumpet "Installing nikto..."
 attempt_run brew install nikto
 
-trumpet "Installing lazygit..."
-attempt_run brew install lazygit
 
-echo "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."
+trumpet "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."

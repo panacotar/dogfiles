@@ -29,6 +29,32 @@ dconf read /org/gnome/terminal/legacy/keybindings/close-tab
 dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
 ```
 
+### Add a startup command
+For example, a command to switch the CTRL-CAPS_LOCK keys.    
+Menu > Startup Applications (can have other name ex: *Session & Startup*) > Add a new Custom Command > `/usr/bin/setxkbmap -option "ctrl:swapcaps"`.
+
+**Note:** `/usr/bin/setxkbmap -option "ctrl:nocaps"` also works.
+
+You can find the startup commands/applications in `~/.config/autostart`.
+
+Alternative using:
+- gnome-tweaks
+```
+gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
+```
+- xmodmap (create the `~/.xmodmap` file)
+```
+!
+! Swap Caps_Lock and Control_L
+!
+remove Lock = Caps_Lock
+remove Control = Control_L
+keysym Control_L = Caps_Lock
+keysym Caps_Lock = Control_L
+add Lock = Caps_Lock
+add Control = Control_L
+```
+
 ### Make a shell file executable 
 #### by the owner
 chmod u+x FILENAME

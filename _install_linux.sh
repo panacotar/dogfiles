@@ -1,31 +1,12 @@
 #!/bin/zsh
 
+echo "################################"
 echo "#####   Installing Linux   #####"
 
 symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "irbrc" "rspec" "tmux.conf")
 
-echo "Do you want to swap CTRL - CAPS LOCK keys? (y/n)"
-read key_swap_confim
-
 echo "Do you want to install DBeaver? (y/n)"
 read dbeaver_confirm
-
-if [ $key_swap_confim = 'y' ]
-then
-  echo "Swapping keys CTRL - CAPS LOCK..."
-  # Add command to zshrc (will always be executed when zshrc is sourced)
-  # The option might be `caps:nocaps` in some cases
-  echo "\n# Swaps keys ctrl-caps" >> zshrc
-  echo "eval 'setxkbmap -option ctrl:swapcaps'" >> zshrc
-
-  # Alternative using xmodmap config file
-  # backup "$HOME/.xmodmap"
-  # symlink "$PWD/xmodmap" "$HOME/.xmodmap"
-  # echo "eval 'xmodmap ~/.xmodmap'" >> zshrc
-
-  # Alternative using gnome-tweaks
-  # gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
-fi
 
 # Change close-tab keybinding in the terminal
 dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
@@ -56,9 +37,6 @@ attempt_run sudo apt-get install xclip
 trumpet "Installing libavcodec-extra"
 attempt_run sudo apt install libavcodec-extra -y
 
-trumpet "Installing cewl, crunch, wfuzz"
-attempt_run sudo apt-get install cewl crunch wfuzz -y
-
 trumpet "Installing tldr..."
 attempt_run sudo apt-get install tldr -y
 
@@ -78,16 +56,6 @@ attempt_run sudo apt update && sudo apt install ngrok
 trumpet "Specifying the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
 attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
 
-trumpet "Installing nmap..."
-attempt_run sudo apt-get install nmap -y
-
-trumpet "Installing wpscan..."
-attempt_run sudo apt install ruby-dev -y
-attempt_run sudo gem install wpscan
-
-trumpet "Installing nikto (the git version)..."
-attempt_run git clone https://github.com/sullo/nikto ~/code/misc/nikto
-
 trumpet "Installing Go..."
 progress_comm "Downloading Go tar archive"
 attempt_run wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
@@ -98,12 +66,6 @@ attempt_run tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 progress_comm "Remove the tar archive"
 rm go${GO_VERSION}.linux-amd64.tar.gz
 
-trumpet "Installing gobuster..."
-attempt_run go install github.com/OJ/gobuster/v3@latest
-
-trumpet "Installing seclist..."
-attempt_run sudo apt-get install seclists
-
 trumpet "Installing tmux..."
 attempt_run sudo apt install tmux -y
 
@@ -113,6 +75,29 @@ attempt_run curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/re
 tar xf lazygit.tar.gz lazygit
 attempt_run sudo install lazygit /usr/local/bin
 rm lazygit.tar.gz lazygit 
+
+###################
+# Sec
+####################
+
+trumpet "Installing nmap..."
+attempt_run sudo apt-get install nmap -y
+
+trumpet "Installing cewl, crunch, wfuzz"
+attempt_run sudo apt-get install cewl crunch wfuzz -y
+
+trumpet "Installing wpscan..."
+attempt_run sudo apt install ruby-dev -y
+attempt_run sudo gem install wpscan
+
+trumpet "Installing nikto (the git version)..."
+attempt_run git clone https://github.com/sullo/nikto ~/code/misc/nikto
+
+trumpet "Installing gobuster..."
+attempt_run go install github.com/OJ/gobuster/v3@latest
+
+trumpet "Installing seclist..."
+attempt_run sudo apt-get install seclists
 
 trumpet "Installing hashcat..."
 attept_run sudo apt install hashcat

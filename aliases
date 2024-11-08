@@ -74,9 +74,6 @@ alias ldog='lazygit -p ~/code/darius/dogfiles/'
 # Runs a Shell command in docker
 alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
 
-# Nikto alias
-alias nikto=~/code/misc/nikto/program/nikto.pl
-
 ###################
 # tmux
 ####################

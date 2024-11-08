@@ -65,8 +65,3 @@ export EDITOR='vim'
 
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
-
-# Swaps keys ctrl-caps
-eval 'setxkbmap -option ctrl:swapcaps'
-
-
