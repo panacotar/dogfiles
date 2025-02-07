@@ -84,6 +84,12 @@ To disable this, you can search for `about:config` in Firefox, and then search f
 
 You can also change the default for `ui.key.menuAccessKey` config (it should have a value of `18`). Replace its value to `20` (Caps Lock).
 
+### Change firefox scroll speed
+In the same `about:config`, increase/decrease this option (default `100`):
+```
+mousewheel.default.delta_multiplier_y
+```
+
 ## Terminate a process after a certain time
 The `timeout` command can be used to terminate a process after some time. You need to prepend it to your command, example for the `openvpn` command:
 ```
