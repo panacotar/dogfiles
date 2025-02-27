@@ -29,11 +29,17 @@ dconf read /org/gnome/terminal/legacy/keybindings/close-tab
 dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
 ```
 
+### One line function def
+Aliases are not able to take arguments, but a function can.
+```
+lay() { echo "export CUSTOM_VAR='$1'" | tee -a ~/.zshenv && exec zsh }
+```
+
 ### Add a startup command
 For example, a command to switch the CTRL-CAPS_LOCK keys.    
 Menu > Startup Applications (can have other name ex: *Session & Startup*) > Add a new Custom Command > `/usr/bin/setxkbmap -option "ctrl:swapcaps"`.
 
-**Note:** `/usr/bin/setxkbmap -option "ctrl:nocaps"` also works.
+**Note:** To cancel the CAPS_LOCK button `/usr/bin/setxkbmap -option "ctrl:nocaps"` also works.
 
 You can find the startup commands/applications in `~/.config/autostart`.
 
@@ -140,3 +146,12 @@ Some common defaults **shortcuts** (`C-b` = CTRL+b):
 - `C-b + {#}` - switch to the window with index {#}
 - `C-b + n/p` - switch to the `n`ext/`p`revious window
 - `C-b + l` - switch to the last active window
+
+## VMs
+### Create a shared directory
+On Oracle VirtualBox, start the machine > Devices > Shared Folder > Add new (selec from the host and name it, ex: `HOST_SHARED`).   
+Then on the guest:
+```
+sudo mount -t vboxsf HOST_SHARED ./hostsh
+```
+

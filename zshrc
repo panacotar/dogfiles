@@ -46,7 +46,6 @@ export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
 # Key bindings
-bindkey '^H' backward-kill-word
 
 # Load NVM (managing the node versions)
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
