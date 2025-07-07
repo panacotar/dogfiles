@@ -4,7 +4,7 @@ alias ips="ifconfig -a | perl -nle'/(\d+\.\d+\.\d+\.\d+)/ && print $1'"
 alias speedtest="wget -O /dev/null http://speedtest.wdc01.softlayer.com/downloads/test10.zip"
 
 # Quickly serve the current directory as HTTP
-alias serve='ruby -run -e httpd . -p 8000'  # Or python -m SimpleHTTPServer :)
+alias serve-dir='ruby -run -e httpd . -p 8000'  # Or python -m SimpleHTTPServer :)
 
 # Open my notes
 alias sav='xdg-open ~/Desktop/sav.md'
@@ -53,6 +53,12 @@ alias gbpull='git pull origin "$(git_current_branch)"'
 
 # Sync main with upstream/main
 alias gsup='git fetch upstream && git checkout main && git merge upstream/main; git push origin main'
+
+# Add lab remote
+alias gral='git remote add lab'
+
+# Push to origin and lab
+alias ggpol='git push origin $(current_branch); git push lab $(current_branch)'
 
 ###### Rails
 # Opens rails server at port 5000
