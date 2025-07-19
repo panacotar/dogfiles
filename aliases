@@ -80,6 +80,8 @@ alias ldog='lazygit -p ~/code/darius/dogfiles/'
 # Runs a Shell command in docker
 alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
 
+alias dc='docker compose'
+
 ###################
 # tmux
 ####################
