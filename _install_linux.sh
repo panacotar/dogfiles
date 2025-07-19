@@ -8,6 +8,9 @@ symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "irbrc" "rspec"
 echo "Do you want to install DBeaver? (y/n)"
 read dbeaver_confirm
 
+echo "Do you want to install zellij? (y/n)"
+read zellij_confirm
+
 # Change close-tab keybinding in the terminal
 dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
 
@@ -37,6 +40,12 @@ attempt_run sudo apt-get install xclip
 trumpet "Installing libavcodec-extra"
 attempt_run sudo apt install libavcodec-extra -y
 
+trumpet "Installing openvpn"
+attempt_run sudo apt install openvpn -y
+
+trumpet "Installing exiftool"
+attempt_run sudo apt install exiftool -y
+
 trumpet "Installing tldr..."
 attempt_run sudo apt-get install tldr -y
 
@@ -65,6 +74,12 @@ progress_comm "Extract the tar archive"
 attempt_run tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 progress_comm "Remove the tar archive"
 rm go${GO_VERSION}.linux-amd64.tar.gz
+
+
+if [ $zellij_confirm = 'y' ]
+then
+  source './zellij/install_zellij.sh'
+fi
 
 trumpet "Installing tmux..."
 attempt_run sudo apt install tmux -y
@@ -100,7 +115,7 @@ trumpet "Installing seclist..."
 attempt_run sudo apt-get install seclists
 
 trumpet "Installing hashcat..."
-attept_run sudo apt install hashcat
+attempt_run sudo apt install hashcat
 
 trumpet "Installing impacket..."
 attempt_run sudo apt install python3-impacket

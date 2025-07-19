@@ -125,4 +125,5 @@ code
 nodejs
 postgresql
 rbenv
+calibre
 '
