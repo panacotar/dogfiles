@@ -25,11 +25,11 @@ fi
 
 # Uncompress the Zellij binary
 echo "Uncompressing Zellij binary..."
-tar -xf "$filename"
+tar -xf "$filename" --directory=./zellij
 
 # Move the Zellij binary to the /bin directory
 echo "Moving Zellij binary to /bin directory..."
-sudo mv "./zellij" /bin/zellij
+sudo mv ./zellij/zellij /bin/zellij
 
 # Remove the .tar.gz file
 echo "Removing .tar.gz file..."

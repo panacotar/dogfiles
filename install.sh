@@ -50,6 +50,19 @@ detect_os() {
 }
 detect_os
 
+install_rbenv() {
+    rvm implode && sudo rm -rf ~/.rvm
+    # If you got "zsh: command not found: rvm", carry on.
+    # It means `rvm` is not on your computer, that's what we want!
+    rm -rf ~/.rbenv
+
+    sudo apt install -y build-essential tklib zlib1g-dev libssl-dev libffi-dev libxml2 libxml2-dev libxslt1-dev libreadline-dev libyaml-dev
+
+    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+
+    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+}
+
 echo "Are you sure you want to install ${bold}${(C)os}${normal} configs? (y/n)"
 read confirm
 
@@ -110,6 +123,8 @@ else
   fi
 fi
 
+install_rbenv
+
 zsh ~/.zshrc
 
 echo "👌  Carry on with git setup!"
@@ -122,8 +137,5 @@ tig
 tree
 htop
 code
-nodejs
-postgresql
-rbenv
 calibre
 '

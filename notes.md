@@ -84,11 +84,23 @@ Host github.com
 ## Brief doc on using `vnstat`
 https://askubuntu.com/a/846455
 
-## Disable Firefox menu bar toggle on ALT key press
+## Firefox
+### Disable Firefox menu bar toggle on ALT key press
 By default, pressing the ALT key will toggle the Firefox menu bar (Linux + Windows).   
 To disable this, you can search for `about:config` in Firefox, and then search for `ui.key.menuAccessKeyFocuses` and set its value to `false`.   
 
 You can also change the default for `ui.key.menuAccessKey` config (it should have a value of `18`). Replace its value to `20` (Caps Lock).
+
+### Disable the "manage password" footer
+Enter the `about:config`.
+
+Toggle the config:
+```
+signon.showAutoCompleteFooter: false
+```
+
+### Setup pass manager autofil shortcut
+https://support.mozilla.org/en-US/kb/manage-extension-shortcuts-firefox
 
 ### Change firefox scroll speed
 In the same `about:config`, increase/decrease this option (default `100`):
