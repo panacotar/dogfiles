@@ -55,10 +55,7 @@ export PATH=/usr/local/mysql/bin:$PATH
 eval "$(rbenv init -)"
 
 export BUNDLER_EDITOR=code
-export GOPATH=$HOME/go
-export PATH=$GOPATH/bin:$PATH 
-# New Go installation
-export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:/usr/lib/go-1.22/bin
 
 export EDITOR='vim'
 export ZELLIJ_CONFIG_DIR=$HOME/.config/zellij-me
