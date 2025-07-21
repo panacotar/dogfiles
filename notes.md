@@ -38,7 +38,7 @@ I should create a file (called `config`) in `~/.ssh/`
 ```
 Host github.com
   AddKeysToAgent yes
-  IgnoreUnknown UseKeychai
+  IgnoreUnknown UseKeychain
   UseKeychain yes
   IdentityFile ~/.ssh/github_id_ed25519
 ```
