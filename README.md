@@ -80,10 +80,6 @@ nvm cache clear
 
 ### Install DBs
 ```
-sudo apt-get install sqlite3 libsqlite3-dev pkg-config
-```
-Check with: `sqlite3 -version`.
-```
 sudo apt install -y postgresql postgresql-contrib libpq-dev build-essential
 ```
 Create role:
@@ -101,8 +97,6 @@ sudo add-apt-repository ppa:linrunner/tlp
 
 sudo apt-get install tlp tlp-rdw 
 ```
-
-
 
 ## Origin
 This repository is based on [Le Wagon's](https://www.lewagon.com) dotfiles.
