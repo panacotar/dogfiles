@@ -38,11 +38,11 @@ load_plugins {
 // Use a simplified UI without special fonts (arrow glyphs)
 // Default: false
 // Options: true / false
-// simplified_ui true
+simplified_ui true
  
 // Choose the theme that is specified in the themes section.
 // Default: default
-theme "dracula"
+// theme "dracula"
  
 // Choose the base input mode of zellij.
 // Default: normal

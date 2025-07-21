@@ -61,7 +61,7 @@ export PATH=$GOPATH/bin:$PATH
 export PATH=$PATH:/usr/local/go/bin
 
 export EDITOR='vim'
-# export ZELLIJ_CONFIG_DIR=$HOME/.config/zellij-me
+export ZELLIJ_CONFIG_DIR=$HOME/.config/zellij-me
 
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
