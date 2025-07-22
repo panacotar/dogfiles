@@ -161,7 +161,7 @@ if [ $OS = 'linux' ]; then
   echo "${GREEN}################################"
   echo "${GREEN}#####   Installing Linux   #####${NORMAL}"
 
-  symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "irbrc" "rspec" "tmux.conf")
+  SYMLINK_FILES=(zshrc aliases custom_commands.sh gitconfig irbrc rspec tmux.conf vimrc)
 
   echo "\nDo you want to install ${BOLD}DBeaver${NORMAL}? (y/n)"
   read dbeaver_confirm
@@ -250,7 +250,7 @@ elif [ $OS = 'mac' ]; then
   echo "##############################"
   echo "#####   Installing Mac   #####"
 
-  symlinkFiles=("zshrc" "aliases" "custom_commands.sh" "gitconfig" "gitignore" "macos" "pryrc" "tmux.conf";)
+  SYMLINK_FILES=(zshrc aliases custom_commands.sh gitconfig gitignore macos pryrc tmux.conf)
 
   trumpet "Installing tldr..."
   attempt_run brew install tldr
@@ -284,8 +284,8 @@ else
 fi
 
 # Backup the target file located at `~/.$name` and symlink `$name` to `~/.$name`
-# symlinkFiles different files based on the OS
-for name in ${symlinkFiles[@]}; do
+# SYMLINK_FILES different files based on the OS
+for name in ${SYMLINK_FILES[@]}; do
   if [ ! -d "$name" ]; then
     target="$HOME/.$name"
     backup $target
