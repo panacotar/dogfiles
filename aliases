@@ -15,12 +15,6 @@ alias vimdog='vim ~/code/darius/dogfiles/'
 # Open VS Code in current dir
 alias vs='code .'
 
-# Opens VS Code in the Ruby env # To config further
-alias rbcode='code --extensions-dir ~/code_profiles/rbcode/extensions --user-data-dir ~/code_profiles/rbcode/data'
-
-# Runs npm start
-alias art='npm start'
-
 # Git - Initialize a pull request from the current branch to main/master
 alias greq='gh pr create -fw -a @me'
 
@@ -81,6 +75,8 @@ alias ldog='lazygit -p ~/code/darius/dogfiles/'
 alias dorun='docker-compose --profile backoffice run --rm backoffice sh -c'
 
 alias dc='docker compose'
+
+alias :q='exit'
 
 ###################
 # tmux

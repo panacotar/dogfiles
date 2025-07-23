@@ -194,6 +194,7 @@ if [ $OS = 'linux' ]; then
   PACKS=(
     fprintd libpam-fprintd sqlite3 libsqlite3-dev pkg-config xclip 
     libavcodec-extra openvpn exiftool tldr tmux gpg tig tree htop
+    cheese pavucontrol
   )
 
 
