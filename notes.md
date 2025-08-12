@@ -1,6 +1,44 @@
 # Notes
 tar --exclude='node_modules' --exclude='tmp' --exclude='package-lock.json' --exclude='yarn.lock' -cvf home_backup.tar ~/*
 
+## Installation steps
+### Install Ruby
+Install the latest [ruby](https://www.ruby-lang.org/en/) version. And set it as default.
+```
+rbenv install 3.3.5
+
+rbenv global 3.3.5
+```
+
+#### Install basic gems
+Update bundler:
+```
+gem update bundler
+```
+```
+gem install http rest-client ruby-lsp rails:7.1.3.4 pry-byebug rake rspec colored faker
+```
+
+### Install Nodejs
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | zsh
+```
+Run `exec zsh`.
+
+#### Install node
+```
+nvm install 20.17.0
+```
+Check with `node -v`. Clear cache with `nvm cache clear`.
+
+### Install Postgresql
+```
+sudo apt install -y postgresql postgresql-contrib libpq-dev build-essential
+```
+```
+sudo -u postgres psql --command "CREATE ROLE \"`whoami`\" LOGIN createdb superuser;"
+```
+
 ## Xterm terminal profiles
 ### Get terminal Profile
 ```
