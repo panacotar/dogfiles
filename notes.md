@@ -74,6 +74,8 @@ But if I gave the key a different name (ex `github_id_ed25519`), I need to speci
 I should create a file (called `config`) in `~/.ssh/`
 
 ```
+Host *
+    IgnoreUnknown UseKeychain
 Host github.com
   AddKeysToAgent yes
   IgnoreUnknown UseKeychain
