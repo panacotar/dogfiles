@@ -4,6 +4,10 @@ set number
 " Enable search highlighting.
 set hlsearch
 
+" Enable case insensitive search.      
+" Similar to ignorecase, but only if you search with lowercase letters.
+set smartcase
+
 " Show the mode you are on the last line.
 set showmode
 
