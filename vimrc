@@ -1,10 +1,15 @@
+" Sets encoding
+set encoding=UTF-8
+
 " Add numbers to each line on the left-hand side.
 set number
 
 " Enable search highlighting.
 set hlsearch
 
-" Enable case insensitive search.      
+" Ignore case when searching.
+set ignorecase
+
 " Similar to ignorecase, but only if you search with lowercase letters.
 set smartcase
 
