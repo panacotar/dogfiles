@@ -8,6 +8,8 @@ alias serve-dir='ruby -run -e httpd . -p 8000'  # Or python -m SimpleHTTPServer 
 
 # Open my notes
 alias sav='xdg-open ~/Desktop/sav.md'
+## Without the line numbers
+alias not='vim "+set nonu" ~/Desktop/sav.md'
 
 # Open dogfiles
 alias vimdog='vim ~/code/darius/dogfiles/'
