@@ -3,42 +3,35 @@
 # bold = { family = "FiraCode Nerd Font", style = "Bold" }
 # italic = { family = "FiraCode Nerd Font", style = "Italic" }
 
-# One Dark theme
-[colors]
+# Github dark theme
 [colors.primary]
-background = '0x1e2127'
-foreground = '0xabb2bf'
-bright_foreground = '0xe6efff'
+background = '0x1e2127' # From One Dark theme
+foreground = '0xe6edf3'
+
+# Cursor colors
+# These will only be used when the `custom_cursor_colors` field is set to `true`.
+[colors.cursor]
+text = '0x30363d'
+cursor = '0xe6edf3'
 
 # Normal colors
 [colors.normal]
-black = '0x1e2127'
-red = '0xe06c75'
-green = '0x98c379'
-yellow = '0xd19a66'
-blue = '0x61afef'
-magenta = '0xc678dd'
-cyan = '0x56b6c2'
-white = '0x828791'
+black = '0x484f58'
+red = '0xff7b72'
+green = '0x3fb950'
+yellow = '0xd29922'
+blue = '0x58a6ff'
+magenta = '0xbc8cff'
+cyan = '0x39c5cf'
+white = '0xb1bac4'
 
 # Bright colors
 [colors.bright]
-black = '0x5c6370'
-red = '0xe06c75'
-green = '0x98c379'
-yellow = '0xd19a66'
-blue = '0x61afef'
-magenta = '0xc678dd'
-cyan = '0x56b6c2'
-white = '0xe6efff'
-
-# Dim colors
-[colors.dim]
-black = '0x1e2127'
-red = '0xe06c75'
-green = '0x98c379'
-yellow = '0xd19a66'
-blue = '0x61afef'
-magenta = '0xc678dd'
-cyan = '0x56b6c2'
-white = '0x828791'
+black = '0x6e7681'
+red = '0xffa198'
+green = '0x56d364'
+yellow = '0xe3b341'
+blue = '0x79c0ff'
+magenta = '0xbc8cff'
+cyan = '0x39c5cf'
+white = '0xb1bac4'

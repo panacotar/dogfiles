@@ -3,10 +3,11 @@
 
 [general]
 import = [
-    "~/.config/.alacritty-theme-default.toml"
+    "~/.alacritty-theme-default.toml"
 ]
 
 [window]
+position = { x = 20, y = 250 }
 dimensions = { columns = 180, lines = 40 }
 padding.x = 16
 padding.y = 14

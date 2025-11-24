@@ -257,7 +257,10 @@ elif [ $OS = 'mac' ]; then
   echo "##############################"
   echo "#####   Installing Mac   #####"
 
-  SYMLINK_FILES=(zshrc aliases custom_commands.sh gitconfig gitignore macos pryrc tmux.conf)
+  SYMLINK_FILES=(
+    zshrc aliases custom_commands.sh gitconfig gitignore macos pryrc tmux.conf
+    alacritty.toml alacritty-theme-default.toml
+  )
 
   PACKS=(
     tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree
@@ -272,7 +275,7 @@ elif [ $OS = 'mac' ]; then
   if [ $install_sec = 'y' ]
   then
     SEC_PACKS=(
-      nmap seclists nikto wpscan
+      nmap nikto wpscan
     )
 
     PACKS+=( "${SEC_PACKS[@]}" )
@@ -304,7 +307,6 @@ elif [ $OS = 'mac' ]; then
 
   trumpet "Trust Alacritty"
   attempt_run xattr -dr com.apple.quarantine "/Applications/Alacritty.app"
-  symlink $PWD/alacritty.toml $HOME/.config/alacritty/alacritty.toml
 
   trumpet "Link brew libpq"
   attempt_run brew link --force libpq
