@@ -9,9 +9,7 @@ NORMAL=$(tput sgr0)
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
 
-LOG_FILE=~/dotfile.log
-
-
+LOG_FILE=~/.dogfile.log
 
 # Define a function which rename a `target` file to `target.backup` if the file
 # exists and if it's a 'real' file, ie not a symlink
@@ -56,19 +54,32 @@ attempt_run() {
   $* || (echo "\nfailed" 1>&2 && exit 1)
 }
 
+# Run command with output redirected to log file
+function run() {
+  "$@" 1>>"$LOG_FILE" 2>>"$LOG_FILE"
+}
+
 trumpet() {
   echo "${GREEN}\n#################################\n $1 \n#################################\n${NORMAL}"
 }
 
-function is_apt_package_installed() {
-  local package_name="$1"
+function is_package_installed() {
+  [ -z "$2" ] && err "Expected two arguments to function."
+  run $1 "$2"
+}
 
-  # dpkg -s exit code is 0 && status is "ok installed"
-  if dpkg -s "${package_name}" &> /dev/null && dpkg -s "${package_name}" | grep -q "ok installed"; then
-    return 0 # installed
-  else
-    return 1 # not installed
-  fi
+function check_and_collect_packages() {
+  local check_command=$1
+  shift
+  local packages_to_install=""
+
+  for package in "$@"; do
+    if ! is_package_installed "$check_command" "$package"; then
+      packages_to_install="${packages_to_install:+$packages_to_install }$package"
+    fi
+  done
+
+  echo "$packages_to_install"
 }
 
 function install_packages() {
@@ -217,12 +228,7 @@ if [ $OS = 'linux' ]; then
     attempt_run go install github.com/OJ/gobuster/v3@latest
   fi
 
-  TO_INSTALL=""
-  for i in "${PACKS[@]}"; do
-    if ! is_apt_package_installed "$i"; then
-      TO_INSTALL="$TO_INSTALL $i"
-    fi
-  done
+  TO_INSTALL=$(check_and_collect_packages "dpkg -s" "${PACKS[@]}")
 
   if [ "$TO_INSTALL" != "" ]; then
     install_packages "apt install -y" "$TO_INSTALL"
@@ -253,29 +259,42 @@ elif [ $OS = 'mac' ]; then
 
   SYMLINK_FILES=(zshrc aliases custom_commands.sh gitconfig gitignore macos pryrc tmux.conf)
 
-  trumpet "Installing tldr..."
-  attempt_run brew install tldr
-
-  trumpet "Updating tldr..."
-  attempt_run tldr -u
-
-  trumpet "Installing lazygit..."
-  attempt_run brew install lazygit
-
+  PACKS=(
+    tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree
+  )
+  
   ###################
   # Sec
   ####################
+  echo "\nDo you want to install ${BOLD}sec related packages${NORMAL}? (y/n)"
+  read install_sec
 
-  trumpet "Installing nmap..."
-  attempt_run brew install nmap
+  if [ $install_sec = 'y' ]
+  then
+    SEC_PACKS=(
+      nmap seclists nikto wpscan
+    )
 
-  trumpet "Installing wpscan..."
-  attempt_run brew install wpscanteam/tap/wpscan
-  attempt_run brew install wpscanteam/tap/wpscan --HEAD
+    PACKS+=( "${SEC_PACKS[@]}" )
+  fi
 
-  trumpet "Installing nikto..."
-  attempt_run brew install nikto
+  trumpet "Installing rbenv"
+  rvm implode && sudo rm -rf ~/.rvm
+  sudo rm -rf $HOME/.rbenv /usr/local/rbenv /opt/rbenv /usr/local/opt/rbenv
+  brew uninstall --force rbenv ruby-build
+  brew install rbenv libyaml
 
+  TO_INSTALL=$(check_and_collect_packages "brew list" "${PACKS[@]}")
+
+  if [ "$TO_INSTALL" != "" ]; then
+    install_packages "brew install" "$TO_INSTALL"
+  fi
+
+  trumpet "Link brew libpq"
+  attempt_run brew link --force libpq
+
+  trumpet "Updating tldr..."
+  attempt_run tldr -u
 
   trumpet "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."
 
