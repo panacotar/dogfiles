@@ -290,13 +290,29 @@ elif [ $OS = 'mac' ]; then
     install_packages "brew install" "$TO_INSTALL"
   fi
 
+  # Brew cask packages
+  trumpet "Checking brew cask packages..."
+  PACKS=(
+    visual-studio-code alacritty
+  )
+
+  TO_INSTALL=$(check_and_collect_packages "brew list" "${PACKS[@]}")
+
+  if [ "$TO_INSTALL" != "" ]; then
+    install_packages "brew install --cask" "$TO_INSTALL"
+  fi
+
+  trumpet "Trust Alacritty"
+  attempt_run xattr -dr com.apple.quarantine "/Applications/Alacritty.app"
+  symlink $PWD/alacritty.toml $HOME/.config/alacritty/alacritty.toml
+
   trumpet "Link brew libpq"
   attempt_run brew link --force libpq
 
   trumpet "Updating tldr..."
   attempt_run tldr -u
 
-  trumpet "After installing iTerm2, import the 'Dario_iterm2_profile.json' into it."
+  trumpet "If installing iTerm2, import the 'Dario_iterm2_profile.json' into it. Or use Alacritty as an alternative"
 
 else
   echo "Exiting..."
