@@ -13,6 +13,7 @@
   pager = less -FRSX
   editor = vim
 	excludesfile = /home/darius/.gitignore
+	longpaths = true
 
 [alias]
   co = checkout
