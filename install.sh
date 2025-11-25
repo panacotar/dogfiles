@@ -314,6 +314,12 @@ elif [ $OS = 'mac' ]; then
   trumpet "Updating tldr..."
   attempt_run tldr -u
 
+  # Repeat key instead of showing the alternate characters palette
+  defaults write -g ApplePressAndHoldEnabled -bool false
+
+  trumpet "Setup TPM - Tmux Plugin Manager"
+  attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
   trumpet "If installing iTerm2, import the 'Dario_iterm2_profile.json' into it. Or use Alacritty as an alternative"
 
 else
