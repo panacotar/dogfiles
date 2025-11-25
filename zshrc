@@ -66,4 +66,6 @@ export ZELLIJ_CONFIG_DIR=$HOME/.config/zellij-me
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
 
+# This changes depending on the OS
+export DOTNET_ROOT=/usr/local/share/dotnet
 export PATH="/usr/local/share/dotnet:$PATH"
