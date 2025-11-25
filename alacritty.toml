@@ -13,6 +13,7 @@ padding.x = 16
 padding.y = 14
 opacity = 0.9
 # decorations = "none" # Removes the window decoration (title bar, etc.)
+option_as_alt = "Both" # MacOs - Option key as ALT
 
 [font]
 size = 13

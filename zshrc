@@ -12,6 +12,9 @@ plugins=(git gitfast last-working-dir common-aliases history-substring-search ss
 # Prevent adding to history commands which are prefixed by a space
 setopt HIST_IGNORE_SPACE
 
+# Prevent sending EOF (tmux will not exit)
+setopt ignoreeof
+
 # (macOS-only) Prevent Homebrew from reporting - https://github.com/Homebrew/brew/blob/master/share/doc/homebrew/Analytics.md
 export HOMEBREW_NO_ANALYTICS=1
 ZSH_DISABLE_COMPFIX=true
@@ -62,3 +65,6 @@ export ZELLIJ_CONFIG_DIR=$HOME/.config/zellij-me
 
 export PATH=/opt/homebrew/bin:$PATH
 export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn to path
+
+export DOTNET_ROOT=$HOME/.dotnet
+export PATH=$PATH:$DOTNET_ROOT:$DOTNET_ROOT/toolsexport PATH="$HOME/.local/bin:$PATH"
