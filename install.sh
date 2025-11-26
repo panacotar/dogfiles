@@ -116,10 +116,10 @@ detect_os() {
 detect_os
 
 install_rbenv() {
-  # if command -v rbenv&>/dev/null; then
-  #   progress_comm "Already installed: rbenv"
-  #   return 0
-  # fi
+  if command -v rbenv&>/dev/null; then
+    progress_comm "Already installed: rbenv"
+    return 0
+  fi
 
   trumpet "Installing rbenv..."
   progress_comm "Cleaning up rbenv files"
