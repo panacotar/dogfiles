@@ -115,22 +115,24 @@ detect_os() {
 }
 detect_os
 
-install_rbenv_linux() {
-  if command -v rbenv&>/dev/null; then
-    trumpet "Already installed: rbenv"
-    return 0
-  fi
+install_rbenv() {
+  # if command -v rbenv&>/dev/null; then
+  #   progress_comm "Already installed: rbenv"
+  #   return 0
+  # fi
+
   trumpet "Installing rbenv..."
-  rvm implode && sudo rm -rf ~/.rvm
-  # If you got "zsh: command not found: rvm", carry on.
-  # It means `rvm` is not on your computer, that's what we want!
+  progress_comm "Cleaning up rbenv files"
+  rvm implode &>/dev/null && rm -rf ~/.rvm
   rm -rf ~/.rbenv
 
-  sudo apt install -y build-essential tklib zlib1g-dev libssl-dev libffi-dev libxml2 libxml2-dev libxslt1-dev libreadline-dev libyaml-dev
-
-  git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-
-  git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+  if [ $OS = 'linux' ]; then
+    install_packages "apt install -y" "build-essential tklib zlib1g-dev libssl-dev libffi-dev libxml2 libxml2-dev libxslt1-dev libreadline-dev libyaml-dev"
+    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+  elif [ $OS = 'mac' ]; then
+    install_packages "brew install" "rbenv libyaml"
+  fi
 }
 
 install_lazygit_linux() {
@@ -251,15 +253,15 @@ if [ $OS = 'linux' ]; then
   fi
 
   install_lazygit_linux
-  install_rbenv_linux
+  install_rbenv
 
 elif [ $OS = 'mac' ]; then
-  echo "##############################"
-  echo "#####   Installing Mac   #####"
+  echo "${GREEN}##############################"
+  echo "${GREEN}#####   Installing Mac   #####${NORMAL}"
 
   SYMLINK_FILES=(
-    zshrc aliases custom_commands.sh gitconfig gitignore macos pryrc tmux.conf
-    alacritty.toml alacritty-theme-default.toml
+    zshrc aliases custom_commands.sh gitconfig gitignore irbrc macos rspec 
+    pryrc tmux.conf vimrc alacritty.toml alacritty-theme-default.toml
   )
 
   PACKS=(
@@ -281,11 +283,7 @@ elif [ $OS = 'mac' ]; then
     PACKS+=( "${SEC_PACKS[@]}" )
   fi
 
-  trumpet "Installing rbenv"
-  rvm implode && sudo rm -rf ~/.rvm
-  sudo rm -rf $HOME/.rbenv /usr/local/rbenv /opt/rbenv /usr/local/opt/rbenv
-  brew uninstall --force rbenv ruby-build
-  brew install rbenv libyaml
+  install_rbenv
 
   TO_INSTALL=$(check_and_collect_packages "brew list" "${PACKS[@]}")
 
@@ -294,7 +292,7 @@ elif [ $OS = 'mac' ]; then
   fi
 
   # Brew cask packages
-  trumpet "Checking brew cask packages..."
+  progress_comm "Checking brew cask packages..."
   PACKS=(
     visual-studio-code alacritty
   )
@@ -305,19 +303,20 @@ elif [ $OS = 'mac' ]; then
     install_packages "brew install --cask" "$TO_INSTALL"
   fi
 
-  trumpet "Trust Alacritty"
+  progress_comm "Trust Alacritty"
   attempt_run xattr -dr com.apple.quarantine "/Applications/Alacritty.app"
 
-  trumpet "Link brew libpq"
+  progress_comm "Link brew libpq"
   attempt_run brew link --force libpq
 
-  trumpet "Updating tldr..."
+  progress_comm "Updating tldr..."
   attempt_run tldr -u
 
+  progress_comm "Changing MacOs configs"
   # Repeat key instead of showing the alternate characters palette
   defaults write -g ApplePressAndHoldEnabled -bool false
 
-  trumpet "Setup TPM - Tmux Plugin Manager"
+  progress_comm "Setup TPM - Tmux Plugin Manager"
   attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
   trumpet "If installing iTerm2, import the 'Dario_iterm2_profile.json' into it. Or use Alacritty as an alternative"
