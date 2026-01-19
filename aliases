@@ -56,6 +56,9 @@ alias gral='git remote add lab'
 # Push to origin and lab
 alias ggpol='git push origin $(current_branch); git push lab $(current_branch)'
 
+# Opens the github remote repo in browser
+alias remote='git_url=$(git remote get-url origin) && formatted_url=$(echo $git_url | sed "s/\.git$//" | sed "s/git@github.com:/https:\/\/github.com\//") && open "$formatted_url"'
+
 ###### Rails
 # Opens rails server at port 5000
 alias rs5='rails s -p 5000'
