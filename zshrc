@@ -27,6 +27,9 @@ source "${HOME}/.custom_commands.sh"
 # Load rbenv if installed (To manage your Ruby versions)
 export PATH="${HOME}/.rbenv/bin:${PATH}" # Needed for Linux/WSL
 type -a rbenv > /dev/null && eval "$(rbenv init -)"
+# For M1
+export BUNDLE_FORCE_RUBY_PLATFORM=true
+# run `bundle config set force_ruby_platform true` to set `ruby` in Bundler globally 
 
 # Load pyenv (To manage your Python versions)
 export PATH="${HOME}/.pyenv/bin:${PATH}" # Needed for Linux/WSL
@@ -53,9 +56,8 @@ export LC_ALL=en_US.UTF-8
 # Load NVM (managing the node versions)
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-export PATH="$HOME/.rbenv/bin:$PATH"
+
 export PATH=/usr/local/mysql/bin:$PATH
-eval "$(rbenv init -)"
 
 export BUNDLER_EDITOR=code
 export PATH=$PATH:/usr/lib/go-1.22/bin
@@ -69,3 +71,4 @@ export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn t
 # This changes depending on the OS
 export DOTNET_ROOT=/usr/local/share/dotnet
 export PATH="/usr/local/share/dotnet:$PATH"
+

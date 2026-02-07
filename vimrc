@@ -35,7 +35,7 @@ set tabstop=4
 set expandtab
 
 " Enable the use of mouse (a = all previous modes)
-" set mouse=a
+set mouse=a
 
 if has("unnamedplus")
     set clipboard=unnamedplus
