@@ -265,7 +265,8 @@ elif [ $OS = 'mac' ]; then
   )
 
   PACKS=(
-    tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree
+    tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree pyenv pyenv-virtualenv exiftool
+    overmind
   )
   
   ###################
