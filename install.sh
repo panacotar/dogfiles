@@ -174,7 +174,10 @@ if [ $OS = 'linux' ]; then
   echo "${GREEN}################################"
   echo "${GREEN}#####   Installing Linux   #####${NORMAL}"
 
-  SYMLINK_FILES=(zshrc aliases custom_commands.sh gitconfig irbrc rspec tmux.conf vimrc)
+  SYMLINK_FILES=(
+    zshrc aliases custom_commands.sh gitconfig gitignore irbrc rspec
+    pryrc tmux.conf vimrc alacritty.toml alacritty-theme-default.toml
+  )
 
   echo "\nDo you want to install ${BOLD}DBeaver${NORMAL}? (y/n)"
   read dbeaver_confirm
@@ -251,6 +254,9 @@ if [ $OS = 'linux' ]; then
     mkdir -p $HOME/.config/zellij-me
     symlink $PWD/zellij/config.kdl $HOME/.config/zellij-me/config.kdl
   fi
+
+  progress_comm "Setup TPM - Tmux Plugin Manager"
+  attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
   install_lazygit_linux
   install_rbenv
