@@ -115,6 +115,17 @@ detect_os() {
 }
 detect_os
 
+# Setup StripMe automator service for MacOS (Finder)
+# Initially created with the Automator app
+# allowing to right-click on a file and choose "StripMe" to run the exiftool command on it
+setup_strip_automator() {
+  if [ $OS = 'mac' ]; then
+    progress_comm "Setting up StripMe automator service for MacOS..."
+    mkdir -p ~/Library/Services
+    cp -r misc/automator-macos/StripMe.workflow ~/Library/Services/StripMe.workflow
+  fi
+}
+
 install_rbenv() {
   if command -v rbenv&>/dev/null; then
     progress_comm "Already installed: rbenv"
@@ -289,6 +300,8 @@ elif [ $OS = 'mac' ]; then
 
     PACKS+=( "${SEC_PACKS[@]}" )
   fi
+
+  setup_strip_automator
 
   install_rbenv
 
