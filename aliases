@@ -14,8 +14,11 @@ alias not='vim "+set nonu" ~/Desktop/sav.md'
 # Open dogfiles
 alias vimdog='vim ~/code/darius/dogfiles/'
 
-# Open VS Code in current dir
+# Open VS Code in the current dir
 alias vs='code .'
+
+# Open cursor in the current dir
+alias cur='cursor .'
 
 # Git - Initialize a pull request from the current branch to main/master
 alias greq='gh pr create -fw -a @me'
