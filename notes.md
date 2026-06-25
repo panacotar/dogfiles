@@ -39,6 +39,12 @@ sudo apt install -y postgresql postgresql-contrib libpq-dev build-essential
 sudo -u postgres psql --command "CREATE ROLE \"`whoami`\" LOGIN createdb superuser;"
 ```
 
+## macos
+- Always show hidden files in Finder:
+```sh
+defaults write com.apple.finder AppleShowAllFiles True; killall Finder
+```
+
 ## Xterm terminal profiles
 ### Get terminal Profile
 ```
