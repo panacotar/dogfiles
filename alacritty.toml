@@ -11,7 +11,7 @@ position = { x = 20, y = 250 }
 dimensions = { columns = 180, lines = 40 }
 padding.x = 16
 padding.y = 14
-opacity = 0.9
+opacity = 0.8
 # decorations = "none" # Removes the window decoration (title bar, etc.)
 option_as_alt = "Both" # MacOs - Option key as ALT
 
