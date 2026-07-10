@@ -72,3 +72,8 @@ export PATH=/opt/homebrew/Cellar/openvpn/2.6.5/sbin/:$PATH # This adds openvpn t
 export DOTNET_ROOT=/usr/local/share/dotnet
 export PATH="/usr/local/share/dotnet:$PATH"
 
+# Android emulator
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"

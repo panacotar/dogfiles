@@ -72,6 +72,10 @@ alias rs4='rails s -p 4000'
 # Opens the rails console (it will save me 1 min my whole life)
 alias rac='rails c'
 
+###### NPM
+# npm run
+alias nr='npm run'
+
 ###### Misc
 # Lazygit
 alias lg='lazygit'
