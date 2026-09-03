@@ -37,6 +37,11 @@ set expandtab
 " Enable the use of mouse (a = all previous modes)
 set mouse=a
 
+" Map dot command to <leader> . ( \. ) - find leader with `:echo mapleader`
+nnoremap <leader>. .
+" Disable the dot key
+nnoremap . <Nop>
+
 if has("unnamedplus")
     set clipboard=unnamedplus
 else
