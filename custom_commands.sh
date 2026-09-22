@@ -9,6 +9,13 @@ function lay() {
    echo "export $1=$2" | tee -a ~/.zshenv && exec zsh
 }
 
+# Allows macos to use `cp -t` like linux does. Usage: cpt <destination> <source1> <source2> ...
+function cpt() {
+    dst=$1
+    shift
+    cp "$@" "$dst"
+}
+
 # # Change REMote Origin - cremo.sh wow!
 # # When run inside a local git repository, it sets a new remote origin URL
 # function cremo() {
