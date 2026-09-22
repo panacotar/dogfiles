@@ -269,6 +269,9 @@ if [ $OS = 'linux' ]; then
   progress_comm "Setup TPM - Tmux Plugin Manager"
   attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
+  progress_comm "Installing Alacritty terminfo"
+  wget https://raw.githubusercontent.com/alacritty/alacritty/master/extra/alacritty.info && tic -xe alacritty,alacritty-direct alacritty.info && rm alacritty.info
+
   install_lazygit_linux
   install_rbenv
 
@@ -285,7 +288,7 @@ elif [ $OS = 'mac' ]; then
     tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree pyenv pyenv-virtualenv exiftool
     overmind
   )
-  
+
   ###################
   # Sec
   ####################
