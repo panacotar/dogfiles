@@ -1,3 +1,60 @@
+## Omarchy desktop configuration
+
+On Omarchy, use the separate installer below. The older `install.sh` described
+later in this README targets Ubuntu/macOS and must not be used to set up Omarchy.
+The existing root-level terminal files remain for that older setup; the Omarchy
+terminal settings live under `omarchy/config/`.
+
+1. Install Omarchy and your required applications, including
+   `openai-codex-desktop` for the Super + Shift + A shortcut.
+2. Clone this repository, then review and install its desktop settings:
+
+   ```bash
+   git clone https://github.com/panacotar/dogfiles.git ~/code/darius/dogfiles
+   cd ~/code/darius/dogfiles
+   bash omarchy/install.sh --dry-run
+   bash omarchy/install.sh
+   ```
+
+   The installer works from any working directory. It links individual files,
+   preserves existing files and conflicting links under
+   `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`, and leaves correct
+   links untouched when run again. `XDG_CONFIG_HOME` is respected when set.
+   Keep the cloned repository in place: moving or deleting it breaks the links.
+3. Review [the captured environment and theme instructions](omarchy/RESTORE.md).
+   Apply the theme manually. Monitor settings are skipped by default; to restore
+   them too, review `omarchy/config/hypr/monitors.lua`, then run:
+
+   ```bash
+   bash omarchy/install.sh --include-monitors --dry-run
+   bash omarchy/install.sh --include-monitors
+   ```
+
+4. Apply and validate Hyprland settings:
+
+   ```bash
+   hyprctl reload
+   hyprctl configerrors
+   ```
+
+   Open a new terminal window or reload your terminal to apply terminal settings.
+5. Edit your settings normally, then review, commit, and push from this repository:
+
+   ```bash
+   git status --short
+   git diff -- omarchy
+   git add -- omarchy README.md
+   git diff --cached
+   git commit -m "Update Omarchy configuration"
+   git push
+   ```
+
+Only reviewed paths in `omarchy/files.txt` are installed. To version another
+setting, review it for secrets, add its file under `omarchy/config/`, add its
+relative path to that manifest, and rerun the installer. Do not add caches,
+credentials, generated themes, or backup files. The installer does not install
+packages, apply themes, reload services, commit, or push.
+
 ## Toolset
 
 - [oh-my-zsh](http://ohmyz.sh/)
