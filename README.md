@@ -84,7 +84,8 @@ Use this when migrating installed links from the former root-level config paths.
 The historical Alacritty config path is linked alongside its current XDG path.
 Legacy Bash, PulseAudio, redshift, and desktop launcher examples are retained under
 `conf/` but are not automatically applied. The macOS preferences script is linked
-as `~/.macos`, without being executed.
+as `~/.macos`, without being executed during bootstrap. The post-installer applies
+the whole file automatically on macOS, as described below.
 
 Dry-run prints platform/packages, SSH work, checkout actions, config links/backups,
 plugins and login-shell changes. It does not run sudo, install anything, write
@@ -102,16 +103,40 @@ Run the separate second stage whenever you want its extras:
 bash ~/code/darius/dogfiles/install.sh
 ```
 
-It prompts for Ruby tooling (rbenv/ruby-build), Go, Python tooling
+The initial checkbox menu offers Ruby tooling (rbenv/ruby-build), Go, Python tooling
 (pyenv/pyenv-virtualenv), Node tooling (nvm), security tools, DBeaver, Zellij, and
 platform-specific development apps, services, and desktop/hardware settings.
-Each choice defaults to no. It does not reinstall common packages, install Oh My
+All choices start unchecked. Enter numbers such as `1 3 6` (or `1,3,6`) to toggle
+items, `a` to select all, `n` to clear all, or `q` to cancel. Press Enter to start
+the selected tasks. All selections happen before package installation or APT
+refreshes; there are no further feature-selection questions during installation.
+Platform and per-task banners announce progress. The menu uses Bash without any
+additional UI dependencies. It does not reinstall common packages, install Oh My
 Zsh, or relink shared configs. It works from any working directory on macOS and
 Debian/Mint; Omarchy uses its own package/application management.
 
 Choose language versions per project after installing managers, for example
 `rbenv install VERSION`, `pyenv install VERSION`, or `nvm install --lts` in a new
 terminal. Git identity can be adjusted with `bash ~/code/darius/dogfiles/git_setup.sh`.
+
+### macOS system settings
+
+All Apple system preferences live in [conf/macos](conf/macos), including keyboard
+repeat, save dialogs, screenshots, Bluetooth audio, power management, and sleep
+image settings. A setting in that file is approved to apply: on macOS,
+`install.sh` applies the entire file automatically after the initial menu, without
+per-setting confirmation or a settings checkbox. This also happens when you press
+Enter with no optional packages selected. Use `q` to cancel everything.
+
+Edit `conf/macos` to manage these preferences. To reapply just that file:
+
+```bash
+bash ~/code/darius/dogfiles/conf/macos
+```
+
+System-level settings request administrator authentication. If a setting fails,
+the script attempts the remaining settings, reports failures, and exits nonzero.
+The file is never applied on Linux or by bootstrap's dry-run/config-only modes.
 
 ## Omarchy desktop configuration
 
@@ -178,7 +203,7 @@ packages, apply themes, reload services, commit, or push.
 
 ```bash
 python3 -m unittest discover -s tests -v
-bash -n bootstrap.sh install.sh zellij/install_zellij.sh omarchy/install.sh
+bash -n bootstrap.sh install.sh conf/macos zellij/install_zellij.sh omarchy/install.sh
 zsh -n conf/zshrc conf/aliases
 ```
 

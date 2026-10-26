@@ -1,2 +1,2 @@
-# Link the optional preferences script; never execute it during bootstrap.
+# Bootstrap links this file; install.sh applies all its settings on macOS.
 macos|home|.macos

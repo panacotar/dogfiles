@@ -36,6 +36,9 @@ elif name == 'pacman' and args[:1] == ['-Q']:
 elif name == 'sudo':
     if args == ['-v']:
         assert sys.stdin.isatty(), 'sudo authentication must read the terminal'
+    elif args[0] in ('pmset', 'systemsetup', 'rm', 'touch', 'chflags'):
+        # Never execute macOS configuration commands or touch the real sleep image.
+        sys.exit(1 if os.environ.get('MOCK_MACOS_FAIL') == args[0] else 0)
     else:
         sys.exit(subprocess.call(args))
 elif name == 'git':
@@ -140,7 +143,8 @@ class BootstrapTest(unittest.TestCase):
                         'ssh-keygen', 'ssh-agent', 'ssh-add', 'dscl', 'getent', 'apt-cache',
                         'apt-get', 'dpkg-query', 'curl', 'jq', 'sha256sum', 'install', 'grep', 'zsh',
                         'tldr', 'lazygit', 'tmux', 'gpg', 'tig', 'tree', 'htop',
-                        'sqlite3', 'exiftool', 'pkg-config', 'gh', 'chsh', 'wget'):
+                        'sqlite3', 'exiftool', 'pkg-config', 'gh', 'chsh', 'wget',
+                        'defaults', 'osascript'):
             (self.bin / command).symlink_to(dispatcher)
         tarball = self.work / 'lazygit.tar.gz'
         with tarfile.open(tarball, 'w:gz') as archive:
@@ -207,9 +211,11 @@ class BootstrapTest(unittest.TestCase):
     def assert_success(self, result):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def assert_no_mutations(self):
-        banned = {'sudo', 'curl', 'ssh-keygen', 'ssh-agent', 'ssh-add', 'brew', 'chsh', 'apt-get', 'install'}
+    def assert_no_mutations(self, allow_brew_shellenv=False):
+        banned = {'sudo', 'curl', 'ssh-keygen', 'ssh-agent', 'ssh-add', 'brew', 'chsh', 'apt-get', 'install', 'defaults', 'osascript'}
         for command, args in self.calls():
+            if allow_brew_shellenv and command == 'brew' and args == ['shellenv']:
+                continue
             self.assertNotIn(command, banned, (command, args))
             if command == 'git': self.assertNotIn('clone', args)
             if command == 'pacman': self.assertEqual(args[:1], ['-Q'])
@@ -445,14 +451,106 @@ setup_login_shell
         self.assertNotEqual(self.run_main('--dry-run').returncode, 0)
         self.assert_no_mutations()
 
-    def test_post_install_defaults_to_no_without_touching_configs(self):
+    def test_post_install_no_packages_still_applies_all_macos_settings(self):
         before = snapshot(self.home)
         result = self.run_script('cd /; bash "$TEMPLATE/install.sh"', tty=True,
-                                 tty_input='n\n' * 20)
+                                 tty_input='\n')
         self.assert_success(result)
-        self.assertIn('Post-installation complete', result.stdout)
+        self.assertIn('Applying macOS settings from conf/macos', result.stdout)
+        self.assertNotIn('Keyboard repeat instead of', result.stdout)
+        self.assertIn('macOS settings applied.', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        calls = self.calls()
+        defaults = [args for name, args in calls if name == 'defaults']
+        self.assertEqual(len(defaults), 8)
+        self.assertIn(['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false'], defaults)
+        self.assertIn(['write', 'com.apple.screencapture', 'location', str(self.home / 'Desktop')], defaults)
+        self.assertIn(['sudo', ['pmset', '-a', 'hibernatemode', '0']], calls)
+        self.assertIn(['sudo', ['chflags', 'uchg', '/private/var/vm/sleepimage']], calls)
+        self.assertEqual(calls.count(['sudo', ['-v']]), 1)
+        self.assertFalse(any(name == 'brew' and args != ['shellenv'] for name, args in calls))
+
+    def test_macos_settings_attempt_whole_file_after_failure(self):
+        result = self.run_script('bash "$TEMPLATE/conf/macos"', tty=True,
+                                 env={'MOCK_MACOS_FAIL': 'pmset'})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Attempted all macOS settings; one or more failed.', result.stdout)
+        self.assertEqual(len([args for name, args in self.calls() if name == 'defaults']), 8)
+        self.assertIn(['sudo', ['systemsetup', '-setcomputersleep', 'Off']], self.calls())
+        self.assertIn(['sudo', ['chflags', 'uchg', '/private/var/vm/sleepimage']], self.calls())
+
+    def test_macos_settings_reject_linux_without_applying_anything(self):
+        result = self.run_script('bash "$TEMPLATE/conf/macos"', env={'MOCK_OS': 'Linux'})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('These settings require macOS', result.stderr)
+        self.assert_no_mutations()
+
+    def test_post_install_checkbox_toggles_finish_before_installation(self):
+        # Select Go and DBeaver, then turn Go off before starting.
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='2 6\n2\n\n')
+        self.assert_success(result)
+        self.assertIn('Installing Mac', result.stdout)
+        self.assertIn('[x]  6. DBeaver', result.stdout)
+        self.assertIn('Installing DBeaver...', result.stdout)
+        self.assertNotIn('Installing Go...', result.stdout)
+        installed = [args for name, args in self.calls() if name == 'brew' and args != ['shellenv']]
+        self.assertEqual(installed, [['install', '--cask', 'dbeaver-community']])
+        last_prompt = result.stdout.rfind('Press Enter to install the selected items:')
+        self.assertLess(last_prompt, result.stdout.index('Selection complete. Installing selected options...'))
+        self.assertLess(last_prompt, result.stdout.index('Installing DBeaver...'))
+
+    def test_post_install_checkbox_select_all_clear_and_cancel(self):
+        before = snapshot(self.home)
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='a\nn\nq\n')
+        self.assert_success(result)
+        self.assertIn('[x]  1. Ruby tooling', result.stdout)
+        self.assertIn('Selection cancelled.', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_no_mutations(allow_brew_shellenv=True)
+
+    def test_post_install_invalid_selection_does_not_partially_toggle(self):
+        before = snapshot(self.home)
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='2 nope\nq\n')
+        self.assert_success(result)
+        self.assertIn('Choose numbers between 1 and 9', result.stdout)
+        self.assertNotIn('[x]  2. Go', result.stdout)
+        self.assertIn('Selection cancelled.', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_no_mutations(allow_brew_shellenv=True)
+
+    def prepare_linux_post_installer(self):
+        # Substitute only the trusted OS metadata file, so these Linux flows can
+        # also be exercised on the macOS development host.
+        release = self.work / 'os-release'
+        release.write_text('ID=linuxmint\nID_LIKE="ubuntu debian"\n')
+        script = self.template / 'install.sh'
+        script.write_text(script.read_text().replace('. /etc/os-release', '. "$TEST_OS_RELEASE"'))
+        self.env.update(MOCK_OS='Linux', MOCK_OMARCHY='0', TEST_OS_RELEASE=str(release))
+
+    def test_linux_post_install_cancel_does_not_refresh_apt(self):
+        self.prepare_linux_post_installer()
+        before = snapshot(self.home)
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True, tty_input='q\n')
+        self.assert_success(result)
+        self.assertIn('Installing Linux', result.stdout)
+        self.assertIn('Desktop/hardware extras', result.stdout)
+        self.assertNotIn('StripMe Finder service', result.stdout)
         self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations()
+
+    def test_linux_post_install_collects_choices_before_apt_and_tasks(self):
+        self.prepare_linux_post_installer()
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True, tty_input='2\n\n')
+        self.assert_success(result)
+        apt_calls = [args for name, args in self.calls() if name == 'apt-get']
+        self.assertEqual(apt_calls, [['update'], ['install', '-y', 'golang-go']])
+        selection_end = result.stdout.index('Selection complete. Installing selected options...')
+        self.assertLess(selection_end, result.stdout.index('Updating the local package index...'))
+        self.assertLess(selection_end, result.stdout.index('Installing Go...'))
+        self.assertNotIn('Press Enter to install', result.stdout[selection_end:])
 
     def test_post_install_rejects_omarchy(self):
         before = snapshot(self.home)

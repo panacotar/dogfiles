@@ -9,8 +9,13 @@ if [[ ${1:-} == --help || ${1:-} == -h ]]; then
 Usage: bash install.sh
 
 Optional post-installation for macOS and Debian/Mint after bootstrap.sh.
-Prompts cover Ruby/Go/Python/Node tooling, security tools, DBeaver, Zellij,
-applications, and desktop/hardware extras. No shared dotfiles are relinked.
+Select Ruby/Go/Python/Node tooling, security tools, DBeaver, Zellij,
+applications, and desktop/hardware extras in the initial checkbox menu.
+Enter option numbers to toggle choices; press Enter to install the selection.
+All choices start unchecked. Use a for all, n for none, or q to cancel.
+On macOS, continuing always applies every setting in conf/macos without
+confirmation, even if no optional packages are selected. q cancels everything.
+No shared dotfiles are relinked.
 For the first-machine setup or its preview, use bash bootstrap.sh [--dry-run].
 Omarchy uses bootstrap.sh and omarchy/install.sh instead.
 HELP
@@ -19,11 +24,103 @@ fi
 [[ $# == 0 ]] || { printf 'Unknown argument: %s\n' "$1" >&2; exit 2; }
 [[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
 exec 3</dev/tty
-ask() {
-  local answer
-  printf '\n%s [y/N] ' "$1"
-  IFS= read -r answer <&3
-  [[ "$answer" == y || "$answer" == Y ]]
+
+# Keep announcements readable even when TERM or terminal colors are unavailable.
+BOLD= NORMAL= GREEN=
+if [[ -t 1 && ${TERM:-dumb} != dumb ]] && command -v tput >/dev/null 2>&1; then
+  BOLD=$(tput bold 2>/dev/null || true)
+  NORMAL=$(tput sgr0 2>/dev/null || true)
+  GREEN=$(tput setaf 2 2>/dev/null || true)
+fi
+trumpet() {
+  printf '\n%s#################################\n %s \n#################################%s\n' "$GREEN" "$1" "$NORMAL"
+}
+progress_comm() { printf '\n-----> %s\n' "$1"; }
+
+# A numbered checkbox menu works with macOS's Bash 3.2 and needs no extra tools.
+# Collect every choice before running package managers, downloads, or settings.
+collect_choices() {
+  option_ids=(ruby go python node sec dbeaver zellij)
+  option_labels=(
+    'Ruby tooling (rbenv and ruby-build)'
+    'Go'
+    'Python tooling (pyenv and pyenv-virtualenv)'
+    'Node tooling (nvm; choose a Node version afterward)'
+    'Security tools'
+    'DBeaver'
+    'Zellij'
+  )
+  if [[ "$os" == macos ]]; then
+    option_ids+=(dev_apps stripme)
+    option_labels+=(
+      'Development apps/services (VS Code, Alacritty, PostgreSQL 15, libpq, Overmind)'
+      'StripMe Finder service'
+    )
+  else
+    option_ids+=(desktop terminal_key firefox monitor terminfo)
+    option_labels+=(
+      'Desktop/hardware extras (fingerprint, codecs, VPN, webcam, audio controls)'
+      'GNOME Terminal close-tab shortcut: Ctrl+Alt+W'
+      'Firefox XInput2 smooth scrolling'
+      'Legacy external-monitor RGB setting (DP-2) in ~/.xprofile'
+      'Alacritty terminfo'
+    )
+  fi
+  choices=()
+  local i input token index mark invalid
+  local requested=()
+  for ((i=0; i<${#option_ids[@]}; i++)); do choices+=(0); done
+  if [[ "$os" == macos ]]; then
+    printf '\nAll settings in conf/macos will be applied automatically when you continue.\nUse q to cancel the entire installation.\n'
+  fi
+  while true; do
+    printf '\n%sChoose optional installations and settings:%s\n' "$BOLD" "$NORMAL"
+    for ((i=0; i<${#option_ids[@]}; i++)); do
+      mark=' '
+      if [[ ${choices[$i]} == 1 ]]; then mark=x; fi
+      printf '  [%s] %2d. %s\n' "$mark" "$((i+1))" "${option_labels[$i]}"
+    done
+    printf '\nToggle numbers (e.g. 1 3 6), a=all, n=none, q=quit.\nPress Enter to install the selected items: '
+    if ! IFS= read -r input <&3; then
+      printf '\nSelection cancelled.\n'
+      return 1
+    fi
+    case "$input" in
+      '') return 0 ;;
+      q|Q) printf '\nSelection cancelled.\n'; return 1 ;;
+      a|A|n|N)
+        mark=0
+        if [[ "$input" == a || "$input" == A ]]; then mark=1; fi
+        for ((i=0; i<${#choices[@]}; i++)); do choices[$i]=$mark; done ;;
+      *)
+        IFS=$' \t\n' read -r -a requested <<< "${input//,/ }"
+        invalid=false
+        # Validate the entire line before changing any checkboxes.
+        for token in ${requested[@]+"${requested[@]}"}; do
+          if [[ ! "$token" =~ ^[0-9]{1,2}$ ]]; then invalid=true; break; fi
+          index=$((10#$token - 1))
+          if ((index < 0 || index >= ${#choices[@]})); then invalid=true; break; fi
+        done
+        if "$invalid"; then
+          printf 'Choose numbers between 1 and %s, or a, n, q.\n' "${#choices[@]}"
+          continue
+        fi
+        for token in ${requested[@]+"${requested[@]}"}; do
+          index=$((10#$token - 1))
+          choices[$index]=$((1 - choices[$index]))
+        done ;;
+    esac
+  done
+}
+selected() {
+  local i
+  for ((i=0; i<${#option_ids[@]}; i++)); do
+    if [[ ${option_ids[$i]} == "$1" ]]; then
+      [[ ${choices[$i]} == 1 ]]
+      return
+    fi
+  done
+  return 1
 }
 root() { sudo -v <&3; sudo "$@"; }
 packages() {
@@ -55,17 +152,40 @@ for tool in git curl zsh jq gpg; do
   command -v "$tool" >/dev/null 2>&1 || { echo "Missing $tool; run bootstrap.sh first." >&2; exit 1; }
 done
 if [[ "$os" == macos ]]; then
-  if [[ -x /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi
+  trumpet '#####   Installing Mac   #####'
+  if command -v brew >/dev/null 2>&1; then eval "$(brew shellenv)"
+  elif [[ -x /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then eval "$(/usr/local/bin/brew shellenv)"
+  fi
   command -v brew >/dev/null 2>&1 || { echo 'Run bootstrap.sh to install Homebrew first.' >&2; exit 1; }
 else
-  root apt-get update
+  trumpet '#####   Installing Linux   #####'
 fi
+
+if ! collect_choices; then exit 0; fi
+selection_count=0
+for choice in "${choices[@]}"; do selection_count=$((selection_count + choice)); done
+if [[ "$selection_count" == 0 && "$os" != macos ]]; then
+  echo 'No options selected. Nothing to install.'
+  exit 0
+fi
+trumpet 'Selection complete. Installing selected options...'
+for ((i=0; i<${#option_ids[@]}; i++)); do
+  if [[ ${choices[$i]} == 1 ]]; then printf '  - %s\n' "${option_labels[$i]}"; fi
+done
+if [[ "$os" == macos ]]; then printf '  - All macOS settings in conf/macos\n'; fi
 
 tmp_dir=
 trap 'if [[ -n "$tmp_dir" ]]; then rm -rf -- "$tmp_dir"; fi' EXIT
 trap 'printf "Post-installation failed at line %s; fix the reported issue and rerun.\n" "$LINENO" >&2' ERR
 
-if ask 'Install Ruby tooling (rbenv and ruby-build)?'; then
+if [[ "$os" == debian ]]; then
+  progress_comm 'Updating the local package index...'
+  root apt-get update
+fi
+
+if selected ruby; then
+  trumpet 'Installing Ruby tooling (rbenv and ruby-build)...'
   if [[ "$os" == macos ]]; then
     packages rbenv ruby-build libyaml
   else
@@ -75,10 +195,12 @@ if ask 'Install Ruby tooling (rbenv and ruby-build)?'; then
   fi
   echo 'Choose the Ruby version for your projects with: rbenv install VERSION'
 fi
-if ask 'Install Go?'; then
+if selected go; then
+  trumpet 'Installing Go...'
   if [[ "$os" == macos ]]; then packages go; else packages golang-go; fi
 fi
-if ask 'Install Python tooling (pyenv and pyenv-virtualenv)?'; then
+if selected python; then
+  trumpet 'Installing Python tooling (pyenv and pyenv-virtualenv)...'
   if [[ "$os" == macos ]]; then
     packages pyenv pyenv-virtualenv
   else
@@ -87,7 +209,8 @@ if ask 'Install Python tooling (pyenv and pyenv-virtualenv)?'; then
     clone_missing https://github.com/pyenv/pyenv-virtualenv.git "$HOME/.pyenv/plugins/pyenv-virtualenv"
   fi
 fi
-if ask 'Install Node tooling (nvm, without choosing a Node version)?'; then
+if selected node; then
+  trumpet 'Installing Node tooling (nvm)...'
   if [[ ! -s "$HOME/.nvm/nvm.sh" ]]; then
     [[ ! -e "$HOME/.nvm" ]] || { echo 'Review the existing incomplete ~/.nvm installation.' >&2; exit 1; }
     version=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -er .tag_name)
@@ -99,7 +222,8 @@ if ask 'Install Node tooling (nvm, without choosing a Node version)?'; then
   fi
   echo 'Open a new terminal, then run nvm install --lts (or a project-specific version).'
 fi
-if ask 'Install security tools?'; then
+if selected sec; then
+  trumpet 'Installing security tools...'
   if [[ "$os" == macos ]]; then
     packages nmap nikto wpscan
   else
@@ -110,7 +234,8 @@ if ask 'Install security tools?'; then
     go install github.com/OJ/gobuster/v3@latest
   fi
 fi
-if ask 'Install DBeaver?'; then
+if selected dbeaver; then
+  trumpet 'Installing DBeaver...'
   if [[ "$os" == macos ]]; then
     brew install --cask dbeaver-community
   else
@@ -124,38 +249,45 @@ if ask 'Install DBeaver?'; then
     rm -rf -- "$tmp_dir"; tmp_dir=
   fi
 fi
-if ask 'Install Zellij?'; then
+if selected zellij; then
+  trumpet 'Installing Zellij...'
   if [[ "$os" == macos ]]; then packages zellij; else bash "$script_dir/zellij/install_zellij.sh"; fi
   echo 'Zellij uses the config linked by bootstrap.sh under the XDG config directory.'
 fi
 if [[ "$os" == macos ]]; then
-  if ask 'Install development applications and services (VS Code, Alacritty, PostgreSQL 15, libpq, Overmind)?'; then
+  if selected dev_apps; then
+    trumpet 'Installing development applications and services...'
     packages postgresql@15 libpq overmind
     brew install --cask visual-studio-code alacritty
     brew link --force libpq
   fi
-  if ask 'Install the StripMe Finder service?'; then
+  if selected stripme; then
+    trumpet 'Installing the StripMe Finder service...'
     mkdir -p "$HOME/Library/Services"
     cp -R "$script_dir/misc/automator-macos/StripMe.workflow" "$HOME/Library/Services/"
   fi
-  if ask 'Enable keyboard repeat instead of the accented-character popup?'; then
-    defaults write -g ApplePressAndHoldEnabled -bool false
-  fi
+  trumpet 'Applying macOS settings from conf/macos...'
+  bash "$script_dir/conf/macos"
 else
-  if ask 'Install desktop/hardware extras (fingerprint support, codecs, VPN, webcam, audio controls)?'; then
+  if selected desktop; then
+    trumpet 'Installing desktop and hardware extras...'
     packages fprintd libpam-fprintd libavcodec-extra openvpn cheese pavucontrol python3-pip
   fi
-  if ask 'Set GNOME Terminal close-tab to Ctrl+Alt+W?'; then
+  if selected terminal_key; then
+    trumpet 'Configuring the GNOME Terminal close-tab shortcut...'
     dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
   fi
-  if ask 'Enable Firefox XInput2 smooth scrolling?'; then
+  if selected firefox; then
+    trumpet 'Enabling Firefox XInput2 smooth scrolling...'
     printf 'export MOZ_USE_XINPUT2=1\n' | root tee /etc/profile.d/use-xinput2.sh >/dev/null
   fi
-  if ask 'Add the legacy external-monitor RGB setting (DP-2) to ~/.xprofile?'; then
+  if selected monitor; then
+    trumpet 'Configuring the legacy external-monitor RGB setting (DP-2)...'
     monitor_line='xrandr --output DP-2 --set "Broadcast RGB" "Full"'
     if ! grep -Fxq "$monitor_line" "$HOME/.xprofile" 2>/dev/null; then printf '%s\n' "$monitor_line" >> "$HOME/.xprofile"; fi
   fi
-  if ask 'Install Alacritty terminfo?'; then
+  if selected terminfo; then
+    trumpet 'Installing Alacritty terminfo...'
     tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
     curl -fsSL https://raw.githubusercontent.com/alacritty/alacritty/master/extra/alacritty.info -o "$tmp_dir/alacritty.info"
     tic -xe alacritty,alacritty-direct "$tmp_dir/alacritty.info"

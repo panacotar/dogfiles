@@ -1,25 +1,43 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
-# ~/.macos — cherry-picked from https://mths.be/macos
+# All macOS system preferences live here. install.sh applies this entire file
+# automatically on macOS, without per-setting questions. A setting present here
+# is approved to apply. Edit this file to add, change, or remove preferences.
+# Also linked as ~/.macos; run manually with: bash ~/.macos
+# Originally cherry-picked from https://mths.be/macos
+set -uo pipefail
+
+[[ "$(uname -s)" == Darwin ]] || { echo 'These settings require macOS.' >&2; exit 1; }
+[[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
+
+# Administrator authentication is required by the system-level settings below.
+# It is requested once up front; there are no setting-selection confirmations.
+sudo -v </dev/tty || exit "$?"
+
+# Try the whole file even if an older or hardware-specific setting is rejected.
+# Report failures at the end, rather than silently skipping the remaining settings.
+failed=false
+apply() {
+  local status
+  if "$@"; then return 0; else status=$?; fi
+  printf 'macOS setting failed (status %s):' "$status" >&2
+  printf ' %q' "$@" >&2
+  printf '\n' >&2
+  failed=true
+}
 
 # Close any open System Preferences panes, to prevent them from overriding
 # settings we’re about to change
-osascript -e 'tell application "System Preferences" to quit'
-
-# Ask for the administrator password upfront
-sudo -v
-
-# Keep-alive: update existing `sudo` time stamp until `.macos` has finished
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+apply osascript -e 'tell application id "com.apple.systempreferences" to quit'
 
 ###############################################################################
 # General UI/UX                                                               #
 ###############################################################################
 
 # Expanding the save panel by default
-defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
-defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
-defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
+apply defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+apply defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+apply defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 
 
 ###############################################################################
@@ -27,58 +45,67 @@ defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 ###############################################################################
 
 # Save screenshots to the Desktop (or elsewhere)
-defaults write com.apple.screencapture location "${HOME}/Desktop"
+apply defaults write com.apple.screencapture location "${HOME}/Desktop"
 
 ###############################################################################
 # Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
 ###############################################################################
 # Disable press-and-hold for keys in favor of key repeat
-defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+apply defaults write -g ApplePressAndHoldEnabled -bool false
 
 # Set a blazingly fast keyboard repeat rate
-defaults write NSGlobalDomain KeyRepeat -int 1
-defaults write NSGlobalDomain InitialKeyRepeat -int 10
+apply defaults write NSGlobalDomain KeyRepeat -int 1
+apply defaults write NSGlobalDomain InitialKeyRepeat -int 10
 
 # Increase sound quality for Bluetooth headphones/headsets
-defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
+apply defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
 
 ###############################################################################
 # Energy saving                                                               #
 ###############################################################################
 
 # Enable lid wakeup
-sudo pmset -a lidwake 1
+apply sudo pmset -a lidwake 1
 
 # Restart automatically on power loss
-sudo pmset -a autorestart 1
+apply sudo pmset -a autorestart 1
 
 # Restart automatically if the computer freezes
-sudo systemsetup -setrestartfreeze on
+apply sudo systemsetup -setrestartfreeze on
 
 # Sleep the display after 15 minutes
-sudo pmset -a displaysleep 15
+apply sudo pmset -a displaysleep 15
 
 # Disable machine sleep while charging
-sudo pmset -c sleep 0
+apply sudo pmset -c sleep 0
 
 # Set machine sleep to 5 minutes on battery
-sudo pmset -b sleep 5
+apply sudo pmset -b sleep 5
 
 # Set standby delay to 24 hours (default is 1 hour)
-sudo pmset -a standbydelay 86400
+apply sudo pmset -a standbydelay 86400
 
 # Never go into computer sleep mode
-sudo systemsetup -setcomputersleep Off > /dev/null
+apply sudo systemsetup -setcomputersleep Off > /dev/null
 
 # Hibernation mode
 # 0: Disable hibernation (speeds up entering sleep mode)
 # 3: Copy RAM to disk so the system state can still be restored in case of a
 #    power failure.
-sudo pmset -a hibernatemode 0
+apply sudo pmset -a hibernatemode 0
 
 # Remove the sleep image file to save disk space
-sudo rm /private/var/vm/sleepimage
+if [[ -e /private/var/vm/sleepimage ]]; then
+  apply sudo chflags nouchg /private/var/vm/sleepimage
+fi
+apply sudo rm -f /private/var/vm/sleepimage
 # Create a zero-byte file instead…
-sudo touch /private/var/vm/sleepimage
+apply sudo touch /private/var/vm/sleepimage
 # …and make sure it can’t be rewritten
-sudo chflags uchg /private/var/vm/sleepimage
+apply sudo chflags uchg /private/var/vm/sleepimage
+
+if "$failed"; then
+  echo 'Attempted all macOS settings; one or more failed. Review the messages above.' >&2
+  exit 1
+fi
+echo 'macOS settings applied.'
