@@ -10,7 +10,7 @@
 #     Linux also gets OpenSSH; Debian-family X11 sessions also get xclip.
 #     macOS checks Apple command-line tools and installs Homebrew if missing.
 #     Debian refreshes APT metadata; Omarchy uses its existing Pacman database.
-#  4. Use a checksum-verified x86_64/ARM64 Lazygit release if APT cannot provide it,
+#  4. Use a pinned, checksum-verified x86_64/ARM64 Lazygit release if APT cannot provide it,
 #     preserve an existing tldr client, and update the tldr cache.
 #  5. Skip SSH setup if ~/.ssh/github_id_ed25519 exists. Otherwise generate it,
 #     back up/configure the GitHub SSH identity, and load the key into an agent
@@ -19,7 +19,8 @@
 #     checkout's origin to SSH. Existing checkout remotes are left as they are.
 #  7. On macOS/Debian, install Oh My Zsh while keeping .zshrc, plus autosuggestions
 #     and syntax highlighting. On all platforms, install TPM and the tmux plugins
-#     declared in conf/tmux.conf, preserving existing plugin checkouts.
+#     declared in conf/tmux.conf at fixed commits, preserving existing checkouts.
+#     Source pins are in scripts/sources.sh; tmux pins are in conf/tmux.conf.
 #  8. Validate conf/*.links manifests and config destinations, back up conflicts
 #     under the XDG state directory, and create symlinks for Git/Vim/tmux plus
 #     platform-specific shell/application configs. Leave correct links untouched.
@@ -58,6 +59,14 @@ readonly -a DEBIAN_X11_PACKAGES=(
 readonly -a OMARCHY_PACKAGES=(
   lazygit sqlite perl-image-exiftool pkgconf github-cli openssh
 )
+
+# Pins needed before a checkout exists. Other source pins: scripts/sources.sh
+# and conf/tmux.conf. Refresh versions and hashes together after review.
+readonly HOMEBREW_INSTALL_REVISION=85d1a3fc80d8a63932f632aca8f787de11d14a64
+readonly HOMEBREW_INSTALL_SHA256=5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148
+readonly LAZYGIT_VERSION=v0.66.2
+readonly LAZYGIT_ARM64_SHA256=79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4
+readonly LAZYGIT_X86_64_SHA256=158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034
 
 usage() {
   cat <<'HELP'
@@ -181,21 +190,16 @@ package_list() {
 install_lazygit_binary() {
   if have lazygit; then return; fi
   progress_comm 'Installing Lazygit from a checksum-verified release...'
-  local arch version asset url expected actual
+  local arch asset url expected actual
   case "$(uname -m)" in
-    x86_64|amd64) arch=x86_64 ;;
-    aarch64|arm64) arch=arm64 ;;
+    x86_64|amd64) arch=x86_64; expected=$LAZYGIT_X86_64_SHA256 ;;
+    aarch64|arm64) arch=arm64; expected=$LAZYGIT_ARM64_SHA256 ;;
     *) die "No Lazygit binary configured for architecture $(uname -m)" ;;
   esac
-  version=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest | jq -er '.tag_name')
-  [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die 'Invalid Lazygit release version.'
-  asset="lazygit_${version#v}_linux_${arch}.tar.gz"
-  url="https://github.com/jesseduffield/lazygit/releases/download/$version"
+  asset="lazygit_${LAZYGIT_VERSION#v}_linux_${arch}.tar.gz"
+  url="https://github.com/jesseduffield/lazygit/releases/download/$LAZYGIT_VERSION"
   temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
   curl -fsSL "$url/$asset" -o "$temp_dir/$asset"
-  curl -fsSL "$url/checksums.txt" -o "$temp_dir/checksums.txt"
-  expected=$(awk -v name="$asset" '$2 == name || $2 == "*" name {print $1}' "$temp_dir/checksums.txt")
-  [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || die "Missing checksum for $asset"
   actual=$(sha256sum "$temp_dir/$asset")
   [[ "${actual%% *}" == "$expected" ]] || die 'Lazygit checksum verification failed.'
   tar -xzf "$temp_dir/$asset" -C "$temp_dir" lazygit
@@ -228,7 +232,10 @@ install_packages() {
       if [[ -z "$brew_bin" ]]; then
         progress_comm 'Installing Homebrew...'
         temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
-        curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$temp_dir/homebrew.sh"
+        curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/$HOMEBREW_INSTALL_REVISION/install.sh" -o "$temp_dir/homebrew.sh"
+        local installer_checksum
+        installer_checksum=$(shasum -a 256 "$temp_dir/homebrew.sh")
+        [[ ${installer_checksum%% *} == "$HOMEBREW_INSTALL_SHA256" ]] || die 'Homebrew installer checksum verification failed.'
         /bin/bash "$temp_dir/homebrew.sh" </dev/tty
         rm -rf -- "$temp_dir"
         temp_dir=
@@ -429,45 +436,46 @@ link_configs() {
   fi
 }
 
-clone_plugin() {
-  local url=$1 destination=$2
-  if [[ -d "$destination/.git" ]]; then
-    say "Already installed: $destination"
-  elif [[ -e "$destination" || -L "$destination" ]]; then
-    die "Plugin destination already exists but is not a checkout: $destination"
-  else
-    mkdir -p "$(dirname "$destination")"
-    progress_comm "Installing plugin: ${destination##*/}"
-    git clone --depth 1 "$url" "$destination"
-  fi
-}
-
 setup_plugins() {
   trumpet 'Installing shell and tmux plugins...'
   if "$dry_run"; then
-    say 'Would install TPM and the tmux plugins configured in tmux.conf (preserving existing checkouts).'
-    if [[ "$platform" != omarchy ]]; then say 'Would install Oh My Zsh, zsh-autosuggestions and zsh-syntax-highlighting if missing.'; fi
+    say 'Would install TPM and the tmux plugins configured in tmux.conf at pinned commits (preserving existing checkouts).'
+    if [[ "$platform" != omarchy ]]; then say 'Would install Oh My Zsh, zsh-autosuggestions and zsh-syntax-highlighting at pinned commits if missing.'; fi
     return
   fi
+  source "$repo_dir/scripts/sources.sh"
   if [[ "$platform" != omarchy ]]; then
     if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
       progress_comm 'Installing Oh My Zsh...'
       temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
-      curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o "$temp_dir/ohmyzsh.sh"
-      ZSH="$HOME/.oh-my-zsh" ZDOTDIR="$HOME" sh "$temp_dir/ohmyzsh.sh" --unattended --keep-zshrc
+      clone_pinned https://github.com/ohmyzsh/ohmyzsh.git "$temp_dir/ohmyzsh" "$OH_MY_ZSH_REVISION"
+      # The official installer fetches a branch. Give it a local branch at the
+      # verified commit so its second fetch cannot silently install newer code.
+      git -C "$temp_dir/ohmyzsh" branch dogfiles-pinned "$OH_MY_ZSH_REVISION"
+      ZSH="$HOME/.oh-my-zsh" ZDOTDIR="$HOME" REPO=ohmyzsh/ohmyzsh \
+        REMOTE="file://$temp_dir/ohmyzsh" BRANCH=dogfiles-pinned \
+        sh "$temp_dir/ohmyzsh/tools/install.sh" --unattended --keep-zshrc
+      [[ $(git -C "$HOME/.oh-my-zsh" rev-parse HEAD) == "$OH_MY_ZSH_REVISION" ]] || die 'Oh My Zsh revision verification failed.'
+      git -C "$HOME/.oh-my-zsh" checkout --detach "$OH_MY_ZSH_REVISION"
+      git -C "$HOME/.oh-my-zsh" remote set-url origin https://github.com/ohmyzsh/ohmyzsh.git
+      git -C "$HOME/.oh-my-zsh" config oh-my-zsh.branch master
       rm -rf -- "$temp_dir"
       temp_dir=
+    elif [[ -d "$HOME/.oh-my-zsh/.git" ]]; then
+      check_existing_revision "$HOME/.oh-my-zsh" "$OH_MY_ZSH_REVISION"
     fi
     [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]] || die 'Existing Oh My Zsh installation is incomplete.'
-    clone_plugin https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-    clone_plugin https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    clone_pinned https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" "$ZSH_AUTOSUGGESTIONS_REVISION"
+    clone_pinned https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" "$ZSH_SYNTAX_HIGHLIGHTING_REVISION"
   fi
   # Clone the manifest's declared plugins directly. This avoids starting a tmux
   # server or modifying a user's running sessions just to install plugins.
-  local plugin
-  while IFS= read -r plugin; do
+  local entry plugin revision
+  while IFS= read -r entry; do
+    plugin=${entry%%#*}; revision=${entry#*#}
     [[ "$plugin" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "Invalid tmux plugin: $plugin"
-    clone_plugin "https://github.com/$plugin.git" "$HOME/.tmux/plugins/${plugin##*/}"
+    [[ "$entry" == *'#'* && "$revision" =~ ^[0-9a-f]{40}$ ]] || die "Missing commit pin for tmux plugin: $plugin"
+    clone_pinned "https://github.com/$plugin.git" "$HOME/.tmux/plugins/${plugin##*/}" "$revision"
   done < <(sed -n "s/^set -g @plugin '\([^']*\)'.*/\1/p" "$repo_dir/conf/tmux.conf")
 }
 

@@ -80,6 +80,7 @@ exec 3</dev/tty
 # Preserve terminal colors when the logging wrapper sends stdout through tee.
 source "$script_dir/scripts/output.sh"
 init_output "${DOGFILES_INSTALL_COLOR:-false}"
+source "$script_dir/scripts/sources.sh"
 
 # A numbered checkbox menu works with macOS's Bash 3.2 and needs no extra tools.
 # Collect every choice before running package managers, downloads, or settings.
@@ -169,12 +170,6 @@ root() { sudo -v <&3; sudo "$@"; }
 packages() {
   if [[ "$os" == macos ]]; then brew install "$@"; else root apt-get install -y "$@"; fi
 }
-clone_missing() {
-  if [[ -d "$2/.git" ]]; then return; fi
-  [[ ! -e "$2" && ! -L "$2" ]] || { printf 'Existing directory needs review: %s\n' "$2" >&2; exit 1; }
-  mkdir -p "$(dirname "$2")"
-  git clone "$1" "$2"
-}
 
 case "$(uname -s)" in
   Darwin) os=macos ;;
@@ -229,8 +224,8 @@ if selected ruby; then
     packages rbenv ruby-build libyaml
   else
     packages build-essential tk-dev zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
-    clone_missing https://github.com/rbenv/rbenv.git "$HOME/.rbenv"
-    clone_missing https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build"
+    clone_pinned https://github.com/rbenv/rbenv.git "$HOME/.rbenv" "$RBENV_REVISION"
+    clone_pinned https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build" "$RUBY_BUILD_REVISION"
   fi
   echo 'Choose the Ruby version for your projects with: rbenv install VERSION'
 fi
@@ -244,20 +239,18 @@ if selected python; then
     packages pyenv pyenv-virtualenv
   else
     packages build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev xz-utils tk-dev libffi-dev liblzma-dev
-    clone_missing https://github.com/pyenv/pyenv.git "$HOME/.pyenv"
-    clone_missing https://github.com/pyenv/pyenv-virtualenv.git "$HOME/.pyenv/plugins/pyenv-virtualenv"
+    clone_pinned https://github.com/pyenv/pyenv.git "$HOME/.pyenv" "$PYENV_REVISION"
+    clone_pinned https://github.com/pyenv/pyenv-virtualenv.git "$HOME/.pyenv/plugins/pyenv-virtualenv" "$PYENV_VIRTUALENV_REVISION"
   fi
 fi
 if selected node; then
   trumpet 'Installing Node tooling (nvm)...'
   if [[ ! -s "$HOME/.nvm/nvm.sh" ]]; then
     [[ ! -e "$HOME/.nvm" ]] || { echo 'Review the existing incomplete ~/.nvm installation.' >&2; exit 1; }
-    version=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -er .tag_name)
-    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid nvm release.' >&2; exit 1; }
-    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
-    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$version/install.sh" -o "$tmp_dir/nvm.sh"
-    PROFILE=/dev/null NVM_DIR="$HOME/.nvm" bash "$tmp_dir/nvm.sh"
-    rm -rf -- "$tmp_dir"; tmp_dir=
+    # nvm works directly from its checkout; no moving installer or second fetch.
+    clone_pinned https://github.com/nvm-sh/nvm.git "$HOME/.nvm" "$NVM_REVISION"
+  elif [[ -d "$HOME/.nvm/.git" ]]; then
+    check_existing_revision "$HOME/.nvm" "$NVM_REVISION"
   fi
   echo 'Open a new terminal, then run nvm install --lts (or a project-specific version).'
 fi
@@ -267,10 +260,10 @@ if selected sec; then
     packages nmap nikto wpscan
   else
     packages nmap cewl crunch wfuzz seclists hashcat python3-impacket ruby-dev
-    root gem install wpscan
-    clone_missing https://github.com/sullo/nikto.git "$HOME/code/misc/nikto"
+    root gem install wpscan --version "$WPSCAN_VERSION"
+    clone_pinned https://github.com/sullo/nikto.git "$HOME/code/misc/nikto" "$NIKTO_REVISION"
     command -v go >/dev/null 2>&1 || packages golang-go
-    go install github.com/OJ/gobuster/v3@latest
+    go install "github.com/OJ/gobuster/v3@$GOBUSTER_VERSION"
   fi
 fi
 if selected dbeaver; then
@@ -323,8 +316,8 @@ else
   if selected terminfo; then
     trumpet 'Installing Alacritty terminfo...'
     tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
-    curl -fsSL https://raw.githubusercontent.com/alacritty/alacritty/master/extra/alacritty.info -o "$tmp_dir/alacritty.info"
-    tic -xe alacritty,alacritty-direct "$tmp_dir/alacritty.info"
+    clone_pinned https://github.com/alacritty/alacritty.git "$tmp_dir/alacritty" "$ALACRITTY_REVISION"
+    tic -xe alacritty,alacritty-direct "$tmp_dir/alacritty/extra/alacritty.info"
     rm -rf -- "$tmp_dir"; tmp_dir=
   fi
 fi

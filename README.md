@@ -27,6 +27,22 @@ Open a new terminal after setup. Options: `bash ~/code/darius/dogfiles/bootstrap
 Both installers share announcement formatting in `scripts/output.sh`; the
 standalone bootstrap uses plain-text announcements until the checkout is available.
 
+### Security and source updates
+
+Zsh excludes relative directories from `PATH` and checks completion permissions.
+Use `npm exec` or an explicit `./bin/COMMAND` for project tools. Alacritty allows
+OSC52 clipboard writes, but blocks clipboard reads by terminal applications.
+
+Code installed outside native package managers uses fixed commits in
+`scripts/sources.sh` and `conf/tmux.conf`. The standalone bootstrap keeps its
+Homebrew installer pin/checksum and Lazygit version/checksums near its package lists.
+Oh My Zsh automatic updates are disabled; update pins deliberately after reviewing
+upstream changes. Existing source checkouts and edits are preserved, with warnings
+when their revisions differ. To adopt a new pin, move the old checkout aside and
+rerun bootstrap (or select the corresponding optional installer task).
+Install tmux plugins through bootstrap; TPM shortcuts do not resolve commit pins.
+Homebrew/APT/Pacman continue to manage their own packages and updates.
+
 ### SSH and Git
 
 Bootstrap skips SSH setup if `~/.ssh/github_id_ed25519` exists. Otherwise, it creates
@@ -115,7 +131,7 @@ hyprctl configerrors
 
 ```bash
 python3 -m unittest discover -s tests -v
-bash -n bootstrap.sh install.sh scripts/output.sh conf/macos omarchy/install.sh
+bash -n bootstrap.sh install.sh scripts/output.sh scripts/sources.sh conf/macos omarchy/install.sh
 zsh -n conf/zshrc conf/aliases
 ```
 

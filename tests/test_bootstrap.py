@@ -20,7 +20,7 @@ REAL_GIT = shutil.which('git')
 LIBRARY = (ROOT / 'bootstrap.sh').read_text().rsplit('\nmain "$@"', 1)[0]
 
 MOCK = r'''#!PYTHON
-import hashlib, json, os, pathlib, shutil, subprocess, sys
+import hashlib, json, os, pathlib, re, shutil, subprocess, sys
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 with open(os.environ['AUDIT'], 'a') as out:
@@ -41,7 +41,37 @@ elif name == 'sudo':
     else:
         sys.exit(subprocess.call(args))
 elif name == 'git':
-    if args[0] == 'clone':
+    if args[:2] == ['init', '-q'] and '.dogfiles-source-' in args[-1]:
+        (pathlib.Path(args[-1]) / '.git').mkdir()
+        (pathlib.Path(args[-1]) / '.mock-source').touch()
+    elif args[0] == '-C' and (pathlib.Path(args[1]) / '.mock-source').exists():
+        dest = pathlib.Path(args[1])
+        op = args[2:]
+        if op[:3] == ['remote', 'add', 'origin']:
+            (dest / '.mock-url').write_text(op[3])
+        elif op[:1] == ['fetch']:
+            if os.environ.get('MOCK_FETCH_FAIL') == '1': sys.exit(1)
+            (dest / '.mock-revision').write_text(op[-1])
+        elif op == ['rev-parse', 'HEAD']:
+            print('0' * 40 if os.environ.get('MOCK_WRONG_REVISION') == '1' else (dest / '.mock-revision').read_text())
+        elif 'checkout' in op and (dest / '.mock-url').exists():
+            url = (dest / '.mock-url').read_text()
+            if 'ohmyzsh' in url:
+                (dest / 'tools').mkdir(exist_ok=True)
+                (dest / 'tools/install.sh').write_text("""
+test "$1" = --unattended && test "$2" = --keep-zshrc || exit 1
+test "$BRANCH" = dogfiles-pinned || exit 1
+mkdir -p "$ZSH/.git"
+cp "${REMOTE#file://}/.mock-revision" "$ZSH/.mock-revision"
+touch "$ZSH/.mock-source"
+printf 'true\\n' > "$ZSH/oh-my-zsh.sh"
+""")
+            elif 'nvm-sh' in url:
+                (dest / 'nvm.sh').write_text('true\n')
+            elif 'alacritty' in url:
+                (dest / 'extra').mkdir(exist_ok=True)
+                (dest / 'extra/alacritty.info').write_text('mock terminfo')
+    elif args[0] == 'clone':
         dest = pathlib.Path(args[-1])
         if 'panacotar/dogfiles' in args[-2]:
             shutil.copytree(os.environ['TEMPLATE'], dest)
@@ -102,11 +132,17 @@ elif name == 'curl':
             output.write_text(digest + '  ' + asset + '\n')
         elif url.endswith('.tar.gz'):
             shutil.copyfile(os.environ['TARBALL'], output)
+        elif 'Homebrew/install/' in url:
+            output.write_text('printf "installer executed\\n" > "$HOME/homebrew-installer-ran"\n')
         else: raise AssertionError('Unexpected download: ' + url)
 elif name == 'jq':
     print(json.load(sys.stdin)['tag_name'])
 elif name == 'sha256sum':
-    print(hashlib.sha256(pathlib.Path(args[0]).read_bytes()).hexdigest() + '  ' + args[0])
+    source = (pathlib.Path(os.environ['TEMPLATE']) / 'bootstrap.sh').read_text()
+    arch = 'ARM64' if os.environ.get('MOCK_ARCH', 'arm64') in ('arm64', 'aarch64') else 'X86_64'
+    digest = re.search(r'readonly LAZYGIT_' + arch + r'_SHA256=([a-f0-9]+)', source)[1]
+    if os.environ.get('BAD_CHECKSUM') == '1': digest = '0' * 64
+    print(digest + '  ' + args[0])
 elif name == 'install':
     assert args[-1] == '/usr/local/bin/lazygit'
     (bin_dir / 'lazygit').symlink_to(bin_dir / 'dispatcher')
@@ -151,7 +187,7 @@ class BootstrapTest(unittest.TestCase):
                         'apt-get', 'dpkg-query', 'curl', 'jq', 'sha256sum', 'install', 'grep', 'zsh',
                         'tldr', 'lazygit', 'tmux', 'gpg', 'tig', 'tree', 'htop',
                         'sqlite3', 'exiftool', 'pkg-config', 'gh', 'chsh', 'wget',
-                        'defaults', 'osascript'):
+                        'defaults', 'osascript', 'gem', 'go', 'tic'):
             (self.bin / command).symlink_to(dispatcher)
         tarball = self.work / 'lazygit.tar.gz'
         with tarfile.open(tarball, 'w:gz') as archive:
@@ -435,7 +471,85 @@ setup_login_shell
         self.assertIn('checksum verification failed', failed.stdout)
         self.assertFalse(any(command == 'install' for command, _ in self.calls()))
         self.assert_success(self.run_script(code, tty=True, env={'MOCK_ARCH': 'aarch64'}))
-        self.assertTrue(any('lazygit_1.2.3_linux_arm64.tar.gz' in arg for _, args in self.calls() for arg in args))
+        self.assertTrue(any('lazygit_0.66.2_linux_arm64.tar.gz' in arg for _, args in self.calls() for arg in args))
+        downloads = [arg for name, args in self.calls() if name == 'curl' for arg in args if arg.startswith('https://')]
+        self.assertTrue(all('/v0.66.2/' in url and url.endswith('.tar.gz') for url in downloads))
+
+    def test_homebrew_checksum_rejects_download_before_execution(self):
+        code = LIBRARY + '''
+platform=macos; dry_run=false; temp_dir=
+find_brew() { brew_bin=; }
+install_packages
+'''
+        result = self.run_script(code, tty=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Homebrew installer checksum verification failed', result.stdout)
+        self.assertFalse((self.home / 'homebrew-installer-ran').exists())
+        urls = [arg for name, args in self.calls() if name == 'curl' for arg in args if arg.startswith('https://')]
+        self.assertEqual(len(urls), 1)
+        self.assertRegex(urls[0], r'/Homebrew/install/[0-9a-f]{40}/install.sh$')
+
+    def test_homebrew_checksum_accepts_only_matching_content(self):
+        payload = 'printf "installer executed\\n" > "$HOME/homebrew-installer-ran"\n'
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        code = LIBRARY.replace('5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148', digest)
+        code += '''
+platform=macos; dry_run=false; temp_dir=
+find_brew() {
+  brew_bin=
+  if [[ -f "$HOME/homebrew-installer-ran" ]]; then brew_bin=$(command -v brew); fi
+}
+install_packages
+'''
+        result = self.run_script(code, tty=True)
+        self.assert_success(result)
+        self.assertTrue((self.home / 'homebrew-installer-ran').exists())
+
+    def test_wrong_fetched_commit_is_rejected_and_staging_removed(self):
+        code = 'source "$TEMPLATE/scripts/sources.sh"\nclone_pinned https://github.com/nvm-sh/nvm.git "$HOME/plugin" "$NVM_REVISION"\n'
+        for failure in ('MOCK_WRONG_REVISION', 'MOCK_FETCH_FAIL'):
+            with self.subTest(failure=failure):
+                result = self.run_script(code, env={failure: '1'})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((self.home / 'plugin').exists())
+                self.assertFalse(list(self.home.glob('.dogfiles-source-*')))
+
+    def test_bootstrap_fetches_only_full_commit_pins_for_plugins(self):
+        self.assert_success(self.run_main(tty=True))
+        fetches = [args for name, args in self.calls() if name == 'git' and 'fetch' in args]
+        self.assertEqual(len(fetches), 7)  # Oh My Zsh, two Zsh plugins, four tmux plugins.
+        for args in fetches:
+            self.assertRegex(args[-1], r'^[0-9a-f]{40}$')
+
+    def test_optional_runtime_and_security_sources_are_pinned(self):
+        self.prepare_linux_post_installer()
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='1 3 4 5 11\n\n')
+        self.assert_success(result)
+        calls = self.calls()
+        self.assertTrue((self.home / '.nvm/nvm.sh').exists())
+        fetches = [args for name, args in calls if name == 'git' and 'fetch' in args]
+        self.assertEqual(len(fetches), 7)
+        for args in fetches:
+            self.assertRegex(args[-1], r'^[0-9a-f]{40}$')
+        self.assertIn(['go', ['install', 'github.com/OJ/gobuster/v3@v3.8.2']], calls)
+        self.assertIn(['gem', ['install', 'wpscan', '--version', '4.1.0']], calls)
+        self.assertFalse(any(name == 'curl' for name, _ in calls))
+
+    def test_existing_nvm_is_preserved_and_reports_pin_mismatch(self):
+        nvm = self.home / '.nvm'
+        (nvm / '.git').mkdir(parents=True)
+        (nvm / '.mock-source').touch()
+        (nvm / '.mock-revision').write_text('1' * 40)
+        (nvm / 'nvm.sh').write_text('local customization\n')
+        before = snapshot(self.home)
+        self.prepare_linux_post_installer()
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='4\n\n')
+        self.assert_success(result)
+        self.assertIn('preserving existing checkout', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assertFalse(any(name == 'git' and 'fetch' in args for name, args in self.calls()))
 
     def test_piped_help_and_dry_run(self):
         command = 'cat "$TEMPLATE/bootstrap.sh" | bash -s -- '
