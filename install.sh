@@ -11,8 +11,8 @@ Usage: bash install.sh
 Optional post-installation for macOS and Debian/Mint after bootstrap.sh.
 Select Ruby/Go/Python/Node tooling, security tools, DBeaver,
 applications, and desktop/hardware extras in the initial checkbox menu.
-Enter option numbers to toggle choices; press Enter to install the selection.
-All choices start unchecked. Use a for all, n for none, or q to cancel.
+Enter numbers to toggle choices, a to select all, then an empty Enter to install.
+Use n to clear all choices and continue immediately, or q to cancel.
 On macOS, continuing always applies every setting in conf/macos without
 confirmation, even if no optional packages are selected. q cancels everything.
 No shared dotfiles are relinked.
@@ -111,45 +111,92 @@ collect_choices() {
     )
   fi
   choices=()
-  local i input token index mark invalid
+  local i input= token index mark invalid menu= row selected_numbers error=
+  local can_redraw=false full_menu=true columns lines rows length clear_to_end=
+  # The logger pipes stdout through tee; keep cursor controls in that same stream.
+  if [[ ${DOGFILES_INSTALL_COLOR:-false} == true && ${TERM:-dumb} != dumb ]] &&
+    command -v tput >/dev/null 2>&1; then
+    clear_to_end=$(tput ed 2>/dev/null || true)
+    if [[ -n "$clear_to_end" ]] && tput cuu 1 >/dev/null 2>&1; then can_redraw=true; fi
+  fi
   local requested=()
   for ((i=0; i<${#option_ids[@]}; i++)); do choices+=(0); done
   if [[ "$os" == macos ]]; then
     printf '\nAll settings in conf/macos will be applied automatically when you continue.\nUse q to cancel the entire installation.\n'
   fi
   while true; do
-    printf '\n%sChoose optional installations and settings:%s\n' "$BOLD" "$NORMAL"
+    if [[ -n "$menu" ]]; then
+      columns=; lines=
+      if "$can_redraw"; then
+        read -r lines columns < <(stty size <&3 2>/dev/null) || true
+      fi
+      if "$can_redraw" && [[ "$columns" =~ ^[1-9][0-9]*$ && "$lines" =~ ^[1-9][0-9]*$ ]]; then
+        # Include wrapped rows and the input echoed by the terminal.
+        rows=0
+        while IFS= read -r row; do
+          length=${#row}
+          rows=$((rows + (length + columns - 1) / columns))
+          if [[ "$length" == 0 ]]; then rows=$((rows + 1)); fi
+        done <<< "$menu$input"
+        if ((rows < lines)); then
+          printf '\r%s%s' "$(tput cuu "$rows")" "$clear_to_end"
+        else
+          full_menu=false
+        fi
+      else
+        full_menu=false
+      fi
+    fi
+    menu=$'\n'
+    if "$full_menu"; then menu+=$'Choose optional installations and settings:\n'; fi
+    selected_numbers=
     for ((i=0; i<${#option_ids[@]}; i++)); do
       mark=' '
-      if [[ ${choices[$i]} == 1 ]]; then mark=x; fi
-      printf '  [%s] %2d. %s\n' "$mark" "$((i+1))" "${option_labels[$i]}"
+      if [[ ${choices[$i]} == 1 ]]; then
+        mark=x
+        selected_numbers+="${selected_numbers:+, }$((i+1))"
+      fi
+      if "$full_menu"; then
+        printf -v row '  [%s] %2d. %s' "$mark" "$((i+1))" "${option_labels[$i]}"
+        menu+="$row"$'\n'
+      fi
     done
-    printf '\nToggle numbers (e.g. 1 3 6), a=all, n=none, q=quit.\nPress Enter to install the selected items: '
+    if [[ -n "$selected_numbers" ]]; then
+      menu+="Selected options: $selected_numbers."$'\n'
+    else
+      menu+=$'No optional items selected.\n'
+    fi
+    if [[ -n "$error" ]]; then menu+="$error"$'\n'; fi
+    menu+=$'\nToggle numbers (e.g. 1 3 6), a=all, n=none and continue, q=quit.\nPress Enter to install the selected items: '
+    printf '%s' "$menu"
+    error=
     if ! IFS= read -r input <&3; then
       printf '\nSelection cancelled.\n'
       return 1
     fi
     case "$input" in
       '') return 0 ;;
+      n|N)
+        for ((i=0; i<${#choices[@]}; i++)); do choices[$i]=0; done
+        printf '%sNo optional items selected. Continuing...%s\n' "$BOLD" "$NORMAL"
+        return 0 ;;
       q|Q) printf '\nSelection cancelled.\n'; return 1 ;;
-      a|A|n|N)
-        mark=0
-        if [[ "$input" == a || "$input" == A ]]; then mark=1; fi
-        for ((i=0; i<${#choices[@]}; i++)); do choices[$i]=$mark; done ;;
+      a|A)
+        for ((i=0; i<${#choices[@]}; i++)); do choices[$i]=1; done ;;
       *)
         IFS=$' \t\n' read -r -a requested <<< "${input//,/ }"
         invalid=false
-        # Validate the entire line before changing any checkboxes.
+        if [[ ${#requested[@]} == 0 ]]; then invalid=true; fi
         for token in ${requested[@]+"${requested[@]}"}; do
           if [[ ! "$token" =~ ^[0-9]{1,2}$ ]]; then invalid=true; break; fi
           index=$((10#$token - 1))
           if ((index < 0 || index >= ${#choices[@]})); then invalid=true; break; fi
         done
         if "$invalid"; then
-          printf 'Choose numbers between 1 and %s, or a, n, q.\n' "${#choices[@]}"
+          error="Choose numbers between 1 and ${#choices[@]}, or a, n, q."
           continue
         fi
-        for token in ${requested[@]+"${requested[@]}"}; do
+        for token in "${requested[@]}"; do
           index=$((10#$token - 1))
           choices[$index]=$((1 - choices[$index]))
         done ;;

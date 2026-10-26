@@ -652,18 +652,17 @@ install_packages
         self.assertIn('These settings require macOS', result.stderr)
         self.assert_no_mutations()
 
-    def test_post_install_checkbox_toggles_finish_before_installation(self):
-        # Select Go and DBeaver, then turn Go off before starting.
+    def test_post_install_checkboxes_toggle_before_installation(self):
         result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
-                                 tty_input='2 6\n2\n\n')
+                                 tty_input='2,6\n2\n\n')
         self.assert_success(result)
         self.assertIn('Installing Mac', result.stdout)
-        self.assertIn('[x]  6. DBeaver', result.stdout)
         self.assertIn('Installing DBeaver...', result.stdout)
         self.assertNotIn('Installing Go...', result.stdout)
         installed = [args for name, args in self.calls() if name == 'brew' and args != ['shellenv']]
         self.assertEqual(installed, [['install', '--cask', 'dbeaver-community']])
-        last_prompt = result.stdout.rfind('Press Enter to install the selected items:')
+        self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 3)
+        last_prompt = result.stdout.index('Press Enter to install the selected items:')
         self.assertLess(last_prompt, result.stdout.index('Selection complete. Installing selected options...'))
         self.assertLess(last_prompt, result.stdout.index('Installing DBeaver...'))
 
@@ -724,23 +723,67 @@ install_packages
                                 cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_post_install_checkbox_select_all_clear_and_cancel(self):
+    def test_post_install_none_proceeds_without_second_confirmation(self):
         before = snapshot(self.home)
         result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
-                                 tty_input='a\nn\nq\n')
+                                 tty_input='n\n', env={'TERM': 'xterm-256color'})
         self.assert_success(result)
-        self.assertIn('[x]  1. Ruby tooling', result.stdout)
-        self.assertIn('Selection cancelled.', result.stdout)
+        self.assertEqual(result.stdout.count('Choose optional installations and settings:'), 1)
+        self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 1)
+        self.assertIn('No optional items selected. Continuing...', result.stdout)
+        self.assertIn('Applying macOS settings from conf/macos', result.stdout)
+        self.assertNotIn('\033[J', result.stdout)
         self.assertEqual(snapshot(self.home), before)
-        self.assert_no_mutations(allow_brew_shellenv=True)
+        self.assertFalse(any(name == 'brew' and args != ['shellenv'] for name, args in self.calls()))
 
-    def test_post_install_invalid_selection_does_not_partially_toggle(self):
+    def test_checkbox_selection_waits_for_enter_except_none(self):
+        # Exercise selection without running all optional installer tasks.
+        source = (self.template / 'install.sh').read_text()
+        function = source[source.index('collect_choices() {'):source.index('\nselected() {')]
+        for selection, expected in [('a\n\n', '1 1 1 1 1 1 1 1'), ('4 5 8\n\n', '0 0 0 1 1 0 0 1'), ('a\nn\n', '0 0 0 0 0 0 0 0')]:
+            with self.subTest(selection=selection):
+                result = self.run_script('BOLD=; NORMAL=; os=macos; exec 3</dev/tty\n' + function +
+                                         '\ncollect_choices\nprintf "CHOICES:%s\\n" "${choices[*]}"\n',
+                                         tty=True, tty_input=selection)
+                self.assert_success(result)
+                self.assertIn('CHOICES:' + expected, result.stdout)
+                self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 2)
+        self.assert_no_mutations()
+
+    def test_checkbox_redraw_then_none_clears_selection_and_continues(self):
+        before = snapshot(self.home)
+        result = self.run_script('stty rows 24 cols 80 </dev/tty\nbash "$TEMPLATE/install.sh"',
+                                 tty=True, tty_input='2\nn\n', env={'TERM': 'xterm-256color'})
+        self.assert_success(result)
+        self.assertIn('[x]  2. Go', result.stdout)
+        self.assertEqual(result.stdout.count('Choose optional installations and settings:'), 2)
+        self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 2)
+        self.assertEqual(result.stdout.count('\033[15A\033[J'), 1)
+        after_none = result.stdout.split('No optional items selected. Continuing...')[-1]
+        self.assertNotIn('Choose optional installations', after_none)
+        self.assertIn('Applying macOS settings from conf/macos', after_none)
+        self.assertNotIn('Installing Go...', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assertFalse(any(name == 'brew' and args != ['shellenv'] for name, args in self.calls()))
+
+    def test_linux_none_proceeds_without_packages(self):
+        self.prepare_linux_post_installer()
+        before = snapshot(self.home)
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True, tty_input='n\n')
+        self.assert_success(result)
+        self.assertIn('No options selected. Nothing to install.', result.stdout)
+        self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 1)
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_no_mutations()
+
+    def test_post_install_invalid_selection_does_not_partially_select(self):
         before = snapshot(self.home)
         result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
                                  tty_input='2 nope\nq\n')
         self.assert_success(result)
         self.assertIn('Choose numbers between 1 and 8', result.stdout)
-        self.assertNotIn('[x]  2. Go', result.stdout)
+        self.assertEqual(result.stdout.count('Choose optional installations and settings:'), 1)
+        self.assertEqual(result.stdout.count('Press Enter to install the selected items:'), 2)
         self.assertIn('Selection cancelled.', result.stdout)
         self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations(allow_brew_shellenv=True)
@@ -774,7 +817,7 @@ install_packages
         selection_end = result.stdout.index('Selection complete. Installing selected options...')
         self.assertLess(selection_end, result.stdout.index('Updating the local package index...'))
         self.assertLess(selection_end, result.stdout.index('Installing Go...'))
-        self.assertNotIn('Press Enter to install', result.stdout[selection_end:])
+        self.assertNotIn('Press Enter to install the selected items:', result.stdout[selection_end:])
 
     def test_post_install_rejects_omarchy(self):
         before = snapshot(self.home)

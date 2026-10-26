@@ -91,8 +91,9 @@ bash ~/code/darius/dogfiles/install.sh
 
 On macOS/Debian, choose runtimes, security tools, DBeaver, development apps, and desktop extras:
 
-- Toggle numbered checkboxes; `a` selects all, `n` clears all.
-- Enter starts installation; `q` cancels. All choices happen up front.
+- Toggle numbered checkboxes with spaces or commas; `a` selects all. The menu updates in place.
+- Press an empty Enter to install the current selection; `q` cancels.
+- `n` clears all optional selections and continues immediately, without redrawing.
 - Pick language versions afterward with rbenv, pyenv, or nvm.
 
 Each `install.sh` run saves its output and errors in a unique
