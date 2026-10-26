@@ -77,8 +77,17 @@ On macOS/Debian, choose runtimes, security tools, DBeaver, development apps, and
 - Enter starts installation; `q` cancels. All choices happen up front.
 - Pick language versions afterward with rbenv, pyenv, or nvm.
 
+Each `install.sh` run saves its output and errors in a unique
+`logs/install-YYYYMMDD-HHMMSS-XXXXXX/output.log` under the checkout, while keeping
+output visible in the terminal. Failures print `fix the reported issue and rerun.
+Logged in ...` with the full path. Logs are private and gitignored; `--help` and
+bootstrap dry-runs create none. Running `conf/macos` directly only prints to the
+terminal; run it through `install.sh` to capture its output in the installation log.
+
 **On macOS, continuing also applies all settings in [conf/macos](conf/macos), even with no optional packages selected.**
-Edit that file to manage keyboard, screenshot, Bluetooth, and power settings. To reapply it alone:
+That file contains only your confirmed personal customizations: currently,
+`ApplePressAndHoldEnabled=false` from the original installer. Add your own settings
+there; inherited third-party defaults are excluded. To reapply it alone:
 
 ```bash
 bash ~/code/darius/dogfiles/conf/macos

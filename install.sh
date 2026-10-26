@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Optional second stage. bootstrap.sh owns common tools, shells and config links.
 if [ -n "${ZSH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
-set -euo pipefail
+set -Eeuo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 
 if [[ ${1:-} == --help || ${1:-} == -h ]]; then
@@ -16,18 +16,70 @@ All choices start unchecked. Use a for all, n for none, or q to cancel.
 On macOS, continuing always applies every setting in conf/macos without
 confirmation, even if no optional packages are selected. q cancels everything.
 No shared dotfiles are relinked.
+Each run saves terminal output and errors under logs/install-*/output.log.
+Failures print the log path; --help does not create a log.
 For the first-machine setup or its preview, use bash bootstrap.sh [--dry-run].
 Omarchy uses bootstrap.sh and omarchy/install.sh instead.
 HELP
   exit 0
 fi
 [[ $# == 0 ]] || { printf 'Unknown argument: %s\n' "$1" >&2; exit 2; }
+
+# Run the installer through tee so output stays visible and the parent waits for
+# the entire log to flush before exiting. A plain process-substitution logger
+# cannot be waited on reliably with macOS's Bash 3.2.
+if [[ ${DOGFILES_INSTALL_LOGGED:-} != 1 ]]; then
+  run_log_dir=$(umask 077; mkdir -p "$script_dir/logs" &&
+    mktemp -d "$script_dir/logs/install-$(date +%Y%m%d-%H%M%S)-XXXXXX") || {
+    printf 'Cannot create an installation log under %s/logs.\n' "$script_dir" >&2
+    exit 1
+  }
+  log_file="$run_log_dir/output.log"
+  (umask 077; : > "$log_file")
+  console_is_tty=false
+  if [[ -t 1 ]]; then console_is_tty=true; fi
+  set +e
+  DOGFILES_INSTALL_LOGGED=1 DOGFILES_INSTALL_LOG="$log_file" \
+    DOGFILES_INSTALL_COLOR="$console_is_tty" bash "$script_dir/install.sh" "$@" 2>&1 | tee -a "$log_file"
+  run_status=("${PIPESTATUS[@]}")
+  if [[ ${run_status[1]} != 0 ]]; then
+    printf 'Writing the installation log failed: %s\n' "$log_file" >&2
+    if [[ ${run_status[0]} == 0 ]]; then exit "${run_status[1]}"; fi
+  fi
+  exit "${run_status[0]}"
+fi
+
+log_file=${DOGFILES_INSTALL_LOG:?Missing installation log path}
+tmp_dir=
+failed_line=
+record_error() {
+  local status=$1 line=$2 command=$3
+  if [[ -z "$failed_line" ]]; then
+    failed_line=$line
+    printf 'Command failed (status %s) at line %s: %s\n' "$status" "$line" "$command" >&2
+  fi
+}
+finish() {
+  local status=$1 line=${failed_line:-$2}
+  trap - EXIT
+  if [[ -n "$tmp_dir" ]]; then rm -rf -- "$tmp_dir" || true; fi
+  if [[ "$status" != 0 ]]; then
+    printf 'Post-installation failed at line %s; fix the reported issue and rerun. Logged in %s\n' "$line" "$log_file" >&2
+  else
+    printf 'Logged in %s\n' "$log_file"
+  fi
+  exit "$status"
+}
+trap 'record_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+trap 'finish "$?" "$LINENO"' EXIT
+printf 'Post-installation started: %s\nLog: %s\n' "$(date '+%Y-%m-%d %H:%M:%S %z')" "$log_file"
+
 [[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
 exec 3</dev/tty
 
 # Keep announcements readable even when TERM or terminal colors are unavailable.
 BOLD= NORMAL= GREEN=
-if [[ -t 1 && ${TERM:-dumb} != dumb ]] && command -v tput >/dev/null 2>&1; then
+if [[ ${DOGFILES_INSTALL_COLOR:-false} == true && ${TERM:-dumb} != dumb ]] && command -v tput >/dev/null 2>&1; then
   BOLD=$(tput bold 2>/dev/null || true)
   NORMAL=$(tput sgr0 2>/dev/null || true)
   GREEN=$(tput setaf 2 2>/dev/null || true)
@@ -173,10 +225,6 @@ for ((i=0; i<${#option_ids[@]}; i++)); do
   if [[ ${choices[$i]} == 1 ]]; then printf '  - %s\n' "${option_labels[$i]}"; fi
 done
 if [[ "$os" == macos ]]; then printf '  - All macOS settings in conf/macos\n'; fi
-
-tmp_dir=
-trap 'if [[ -n "$tmp_dir" ]]; then rm -rf -- "$tmp_dir"; fi' EXIT
-trap 'printf "Post-installation failed at line %s; fix the reported issue and rerun.\n" "$LINENO" >&2' ERR
 
 if [[ "$os" == debian ]]; then
   progress_comm 'Updating the local package index...'

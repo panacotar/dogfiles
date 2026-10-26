@@ -37,8 +37,7 @@ elif name == 'sudo':
     if args == ['-v']:
         assert sys.stdin.isatty(), 'sudo authentication must read the terminal'
     elif args[0] in ('pmset', 'systemsetup', 'rm', 'touch', 'chflags'):
-        # Never execute macOS configuration commands or touch the real sleep image.
-        sys.exit(1 if os.environ.get('MOCK_MACOS_FAIL') == args[0] else 0)
+        raise AssertionError('Unexpected inherited macOS setting: ' + str(args))
     else:
         sys.exit(subprocess.call(args))
 elif name == 'git':
@@ -57,6 +56,10 @@ elif name == 'brew':
         print('export PATH="' + str(bin_dir) + ':$PATH"')
     elif args[:1] == ['list']:
         sys.exit(int(os.environ.get('MOCK_BREW_MISSING', '0')))
+    elif args[:1] == ['install'] and os.environ.get('MOCK_BREW_FAIL'):
+        print('mock package stdout diagnostic')
+        print('mock package stderr diagnostic', file=sys.stderr)
+        sys.exit(int(os.environ['MOCK_BREW_FAIL']))
 elif name == 'xcode-select':
     if args == ['-p']: sys.exit(int(os.environ.get('MOCK_NO_CLT', '0')))
 elif name == 'ssh-keygen':
@@ -80,6 +83,10 @@ elif name == 'dpkg-query':
     else: sys.exit(1)
 elif name == 'chsh':
     sys.exit(int(os.environ.get('MOCK_CHSH_BLOCKED', '0')))
+elif name == 'defaults' and os.environ.get('MOCK_MACOS_FAIL') == 'defaults':
+    print('mock macOS stdout diagnostic')
+    print('mock macOS stderr diagnostic', file=sys.stderr)
+    sys.exit(1)
 elif name == 'curl':
     url = next(a for a in args if a.startswith('https://'))
     if 'api.github.com' in url:
@@ -462,22 +469,23 @@ setup_login_shell
         self.assertEqual(snapshot(self.home), before)
         calls = self.calls()
         defaults = [args for name, args in calls if name == 'defaults']
-        self.assertEqual(len(defaults), 8)
-        self.assertIn(['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false'], defaults)
-        self.assertIn(['write', 'com.apple.screencapture', 'location', str(self.home / 'Desktop')], defaults)
-        self.assertIn(['sudo', ['pmset', '-a', 'hibernatemode', '0']], calls)
-        self.assertIn(['sudo', ['chflags', 'uchg', '/private/var/vm/sleepimage']], calls)
-        self.assertEqual(calls.count(['sudo', ['-v']]), 1)
+        self.assertEqual(defaults, [['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false']])
+        self.assertFalse(any(name in ('sudo', 'osascript', 'pmset', 'systemsetup', 'chflags')
+                             for name, _ in calls))
         self.assertFalse(any(name == 'brew' and args != ['shellenv'] for name, args in calls))
 
-    def test_macos_settings_attempt_whole_file_after_failure(self):
-        result = self.run_script('bash "$TEMPLATE/conf/macos"', tty=True,
-                                 env={'MOCK_MACOS_FAIL': 'pmset'})
+    def test_macos_settings_reports_failure(self):
+        result = self.run_script('bash "$TEMPLATE/conf/macos"',
+                                 env={'MOCK_MACOS_FAIL': 'defaults'})
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('Attempted all macOS settings; one or more failed.', result.stdout)
-        self.assertEqual(len([args for name, args in self.calls() if name == 'defaults']), 8)
-        self.assertIn(['sudo', ['systemsetup', '-setcomputersleep', 'Off']], self.calls())
-        self.assertIn(['sudo', ['chflags', 'uchg', '/private/var/vm/sleepimage']], self.calls())
+        self.assertIn('macOS setting failed at line', result.stderr)
+        self.assertNotIn('macOS settings applied.', result.stdout)
+
+    def test_macos_settings_only_apply_personal_preference_without_terminal(self):
+        result = self.run_script('bash "$TEMPLATE/conf/macos"')
+        self.assert_success(result)
+        mutations = [[name, args] for name, args in self.calls() if name not in ('uname', 'id')]
+        self.assertEqual(mutations, [['defaults', ['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false']]])
 
     def test_macos_settings_reject_linux_without_applying_anything(self):
         result = self.run_script('bash "$TEMPLATE/conf/macos"', env={'MOCK_OS': 'Linux'})
@@ -499,6 +507,63 @@ setup_login_shell
         last_prompt = result.stdout.rfind('Press Enter to install the selected items:')
         self.assertLess(last_prompt, result.stdout.index('Selection complete. Installing selected options...'))
         self.assertLess(last_prompt, result.stdout.index('Installing DBeaver...'))
+
+    def test_post_install_failure_logs_stdout_stderr_and_final_path(self):
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='\n', env={'MOCK_MACOS_FAIL': 'defaults'})
+        self.assertEqual(result.returncode, 1)
+        logs = list((self.template / 'logs').glob('install-*/output.log'))
+        self.assertEqual(len(logs), 1)
+        contents = logs[0].read_text()
+        for expected in ('mock macOS stdout diagnostic', 'mock macOS stderr diagnostic',
+                         'macOS setting failed at line',
+                         'Command failed (status 1)',
+                         'fix the reported issue and rerun. Logged in ' + str(logs[0])):
+            self.assertIn(expected, contents)
+            self.assertIn(expected, result.stdout)
+
+    def test_post_install_package_failure_preserves_exit_code_and_flushes_log(self):
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='2\n\n', env={'MOCK_BREW_FAIL': '23'})
+        self.assertEqual(result.returncode, 23)
+        log = next((self.template / 'logs').glob('install-*/output.log'))
+        contents = log.read_text()
+        self.assertIn('mock package stdout diagnostic', contents)
+        self.assertIn('mock package stderr diagnostic', contents)
+        self.assertIn('Command failed (status 23)', contents)
+        self.assertTrue(contents.endswith('Logged in ' + str(log) + '\n'))
+        self.assertNotIn('Applying macOS settings', contents)
+
+    def test_post_install_early_exit_is_logged(self):
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 env={'MOCK_OS': 'FreeBSD'})
+        self.assertNotEqual(result.returncode, 0)
+        log = next((self.template / 'logs').glob('install-*/output.log'))
+        self.assertIn('Unsupported operating system.', log.read_text())
+        self.assertIn('Logged in ' + str(log), result.stdout)
+
+    def test_post_install_logs_are_unique_private_and_include_success(self):
+        for _ in range(2):
+            self.assert_success(self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                                tty_input='q\n'))
+        logs = list((self.template / 'logs').glob('install-*/output.log'))
+        self.assertEqual(len(logs), 2)
+        for log in logs:
+            self.assertEqual(log.stat().st_mode & 0o077, 0)
+            self.assertEqual(log.parent.stat().st_mode & 0o077, 0)
+            contents = log.read_text()
+            self.assertIn('Selection cancelled.', contents)
+            self.assertIn('Logged in ' + str(log), contents)
+
+    def test_post_install_help_does_not_create_logs(self):
+        self.assert_success(self.run_script('bash "$TEMPLATE/install.sh" --help'))
+        self.assertFalse((self.template / 'logs').exists())
+
+    def test_install_logs_are_gitignored(self):
+        result = subprocess.run([REAL_GIT, 'check-ignore', '--no-index',
+                                 'logs/install-example/output.log'],
+                                cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_post_install_checkbox_select_all_clear_and_cancel(self):
         before = snapshot(self.home)

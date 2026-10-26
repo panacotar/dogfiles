@@ -1,111 +1,73 @@
 #!/usr/bin/env bash
-
-# All macOS system preferences live here. install.sh applies this entire file
-# automatically on macOS, without per-setting questions. A setting present here
-# is approved to apply. Edit this file to add, change, or remove preferences.
-# Also linked as ~/.macos; run manually with: bash ~/.macos
-# Originally cherry-picked from https://mths.be/macos
-set -uo pipefail
+# Darius's personal macOS preferences, applied automatically by install.sh.
+# Add only explicitly chosen customizations here.
+# The setting below comes from the original install.sh at b79033c, lines 339-340.
+set -euo pipefail
 
 [[ "$(uname -s)" == Darwin ]] || { echo 'These settings require macOS.' >&2; exit 1; }
 [[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
-
-# Administrator authentication is required by the system-level settings below.
-# It is requested once up front; there are no setting-selection confirmations.
-sudo -v </dev/tty || exit "$?"
-
-# Try the whole file even if an older or hardware-specific setting is rejected.
-# Report failures at the end, rather than silently skipping the remaining settings.
-failed=false
-apply() {
-  local status
-  if "$@"; then return 0; else status=$?; fi
-  printf 'macOS setting failed (status %s):' "$status" >&2
-  printf ' %q' "$@" >&2
-  printf '\n' >&2
-  failed=true
-}
-
-# Close any open System Preferences panes, to prevent them from overriding
-# settings we’re about to change
-apply osascript -e 'tell application id "com.apple.systempreferences" to quit'
+trap 'printf "macOS setting failed at line %s.\n" "$LINENO" >&2' ERR
 
 ###############################################################################
-# General UI/UX                                                               #
+# Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
 ###############################################################################
 
-# Expanding the save panel by default
-apply defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
-apply defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
-apply defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
+# Increase sound quality for Bluetooth headphones/headsets
+defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
 
+# Repeat a held key instead of showing the accented-character palette.
+defaults write -g ApplePressAndHoldEnabled -bool false
+
+# Set a fast keyboard repeat rate
+defaults write NSGlobalDomain KeyRepeat -int 1
+defaults write NSGlobalDomain InitialKeyRepeat -int 10
+
+# Set language and text formats
+# Note: if you’re in the US, replace `EUR` with `USD`, `Centimeters` with
+# `Inches`, `en_GB` with `en_US`, and `true` with `false`.
+defaults write NSGlobalDomain AppleLanguages -array "en" "nl"
+defaults write NSGlobalDomain AppleLocale -string "en_GB@currency=EUR"
+defaults write NSGlobalDomain AppleMeasurementUnits -string "Centimeters"
+defaults write NSGlobalDomain AppleMetricUnits -bool true
 
 ###############################################################################
 # Screen                                                                      #
 ###############################################################################
 
-# Save screenshots to the Desktop (or elsewhere)
-apply defaults write com.apple.screencapture location "${HOME}/Desktop"
+# Save screenshots to the desktop
+defaults write com.apple.screencapture location -string "${HOME}/Desktop/screenshots"
+
+# Disable shadow in screenshots
+defaults write com.apple.screencapture disable-shadow -bool true
+
+# Enable subpixel font rendering on non-Apple LCDs
+# Reference: https://github.com/kevinSuttle/macOS-Defaults/issues/17#issuecomment-266633501
+defaults write NSGlobalDomain AppleFontSmoothing -int 1
+
+# Enable HiDPI display modes (requires restart)
+sudo defaults write /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled -bool true
 
 ###############################################################################
-# Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
-###############################################################################
-# Disable press-and-hold for keys in favor of key repeat
-apply defaults write -g ApplePressAndHoldEnabled -bool false
-
-# Set a blazingly fast keyboard repeat rate
-apply defaults write NSGlobalDomain KeyRepeat -int 1
-apply defaults write NSGlobalDomain InitialKeyRepeat -int 10
-
-# Increase sound quality for Bluetooth headphones/headsets
-apply defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
-
-###############################################################################
-# Energy saving                                                               #
+# Finder                                                                      #
 ###############################################################################
 
-# Enable lid wakeup
-apply sudo pmset -a lidwake 1
+# Show icons for hard drives, servers, and removable media on the desktop
+defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool true
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool true
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
+defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
 
-# Restart automatically on power loss
-apply sudo pmset -a autorestart 1
+# Finder: show hidden files by default
+defaults write com.apple.finder AppleShowAllFiles -bool true
 
-# Restart automatically if the computer freezes
-apply sudo systemsetup -setrestartfreeze on
+# Finder: show all filename extensions
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 
-# Sleep the display after 15 minutes
-apply sudo pmset -a displaysleep 15
+# Keep folders on top when sorting by name
+defaults write com.apple.finder _FXSortFoldersFirst -bool true
 
-# Disable machine sleep while charging
-apply sudo pmset -c sleep 0
+# Avoid creating .DS_Store files on network or USB volumes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 
-# Set machine sleep to 5 minutes on battery
-apply sudo pmset -b sleep 5
-
-# Set standby delay to 24 hours (default is 1 hour)
-apply sudo pmset -a standbydelay 86400
-
-# Never go into computer sleep mode
-apply sudo systemsetup -setcomputersleep Off > /dev/null
-
-# Hibernation mode
-# 0: Disable hibernation (speeds up entering sleep mode)
-# 3: Copy RAM to disk so the system state can still be restored in case of a
-#    power failure.
-apply sudo pmset -a hibernatemode 0
-
-# Remove the sleep image file to save disk space
-if [[ -e /private/var/vm/sleepimage ]]; then
-  apply sudo chflags nouchg /private/var/vm/sleepimage
-fi
-apply sudo rm -f /private/var/vm/sleepimage
-# Create a zero-byte file instead…
-apply sudo touch /private/var/vm/sleepimage
-# …and make sure it can’t be rewritten
-apply sudo chflags uchg /private/var/vm/sleepimage
-
-if "$failed"; then
-  echo 'Attempted all macOS settings; one or more failed. Review the messages above.' >&2
-  exit 1
-fi
 echo 'macOS settings applied.'
