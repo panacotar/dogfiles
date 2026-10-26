@@ -1,3 +1,6 @@
+# Include hidden files in long listings; override Oh My Zsh's common-aliases.
+alias ll='ls -alh'
+
 # Get External IP / local IPs
 alias ipme="curl ipinfo.io/ip"
 alias ips="ifconfig -a | perl -nle'/(\d+\.\d+\.\d+\.\d+)/ && print $1'"
