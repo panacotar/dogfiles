@@ -24,6 +24,8 @@ Missing curl on Debian/Mint? Run `sudo apt-get update && sudo apt-get install -y
 
 If macOS opens the command-line tools installer, finish it and rerun bootstrap.
 Open a new terminal after setup. Options: `bash ~/code/darius/dogfiles/bootstrap.sh --help`.
+Both installers share announcement formatting in `scripts/output.sh`; the
+standalone bootstrap uses plain-text announcements until the checkout is available.
 
 ### SSH and Git
 
@@ -113,7 +115,7 @@ hyprctl configerrors
 
 ```bash
 python3 -m unittest discover -s tests -v
-bash -n bootstrap.sh install.sh conf/macos omarchy/install.sh
+bash -n bootstrap.sh install.sh scripts/output.sh conf/macos omarchy/install.sh
 zsh -n conf/zshrc conf/aliases
 ```
 

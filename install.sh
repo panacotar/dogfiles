@@ -77,17 +77,9 @@ printf 'Post-installation started: %s\nLog: %s\n' "$(date '+%Y-%m-%d %H:%M:%S %z
 [[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
 exec 3</dev/tty
 
-# Keep announcements readable even when TERM or terminal colors are unavailable.
-BOLD= NORMAL= GREEN=
-if [[ ${DOGFILES_INSTALL_COLOR:-false} == true && ${TERM:-dumb} != dumb ]] && command -v tput >/dev/null 2>&1; then
-  BOLD=$(tput bold 2>/dev/null || true)
-  NORMAL=$(tput sgr0 2>/dev/null || true)
-  GREEN=$(tput setaf 2 2>/dev/null || true)
-fi
-trumpet() {
-  printf '\n%s#################################\n %s \n#################################%s\n' "$GREEN" "$1" "$NORMAL"
-}
-progress_comm() { printf '\n-----> %s\n' "$1"; }
+# Preserve terminal colors when the logging wrapper sends stdout through tee.
+source "$script_dir/scripts/output.sh"
+init_output "${DOGFILES_INSTALL_COLOR:-false}"
 
 # A numbered checkbox menu works with macOS's Bash 3.2 and needs no extra tools.
 # Collect every choice before running package managers, downloads, or settings.

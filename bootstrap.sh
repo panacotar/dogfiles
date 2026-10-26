@@ -78,6 +78,18 @@ say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# A curl-piped bootstrap has no checkout yet. Keep minimal announcements available
+# without fetching helpers, including during dry-run; use shared styling once local.
+trumpet() { printf '\n#################################\n %s \n#################################\n' "$1"; }
+progress_comm() { printf '\n-----> %s\n' "$1"; }
+load_output_helpers() {
+  local checkout=$1
+  if [[ -f "$checkout/scripts/output.sh" ]]; then
+    source "$checkout/scripts/output.sh"
+    init_output
+  fi
+}
+
 detect_platform() {
   local release_file=${1:-/etc/os-release}
   case "$(uname -s)" in
@@ -168,6 +180,7 @@ package_list() {
 
 install_lazygit_binary() {
   if have lazygit; then return; fi
+  progress_comm 'Installing Lazygit from a checksum-verified release...'
   local arch version asset url expected actual
   case "$(uname -m)" in
     x86_64|amd64) arch=x86_64 ;;
@@ -192,6 +205,7 @@ install_lazygit_binary() {
 }
 
 install_packages() {
+  trumpet 'Installing common CLI tools...'
   package_list
   say "Common packages ($platform): ${packages[*]}"
   if "$dry_run"; then
@@ -205,12 +219,14 @@ install_packages() {
   fi
   case "$platform" in
     macos)
+      progress_comm 'Checking Apple command-line tools and Homebrew...'
       if ! xcode-select -p >/dev/null 2>&1; then
         xcode-select --install || true
         die 'Complete the Apple command-line tools installation, then rerun bootstrap.sh.'
       fi
       find_brew
       if [[ -z "$brew_bin" ]]; then
+        progress_comm 'Installing Homebrew...'
         temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
         curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$temp_dir/homebrew.sh"
         /bin/bash "$temp_dir/homebrew.sh" </dev/tty
@@ -224,8 +240,14 @@ install_packages() {
       for package in "${packages[@]}"; do
         if ! "$brew_bin" list --formula "$package" >/dev/null 2>&1; then missing+=("$package"); fi
       done
-      if [[ ${#missing[@]} -gt 0 ]]; then HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" install "${missing[@]}"; fi ;;
+      if [[ ${#missing[@]} -gt 0 ]]; then
+        progress_comm "Installing Homebrew formulae: ${missing[*]}"
+        HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" install "${missing[@]}"
+      else
+        say 'All configured Homebrew formulae are already installed.'
+      fi ;;
     debian)
+      progress_comm 'Updating the APT package index...'
       as_root apt-get update
       local apt_missing=() apt_package
       for apt_package in "${packages[@]}"; do
@@ -233,22 +255,32 @@ install_packages() {
           apt_missing+=("$apt_package")
         fi
       done
-      if [[ ${#apt_missing[@]} -gt 0 ]]; then as_root apt-get install -y "${apt_missing[@]}"; fi
+      if [[ ${#apt_missing[@]} -gt 0 ]]; then
+        progress_comm "Installing APT packages: ${apt_missing[*]}"
+        as_root apt-get install -y "${apt_missing[@]}"
+      else
+        say 'All configured APT packages are already installed.'
+      fi
       if ! have lazygit; then
         if apt-cache show lazygit >/dev/null 2>&1 && [[ $(apt-cache policy lazygit) != *'Candidate: (none)'* ]]; then
+          progress_comm 'Installing Lazygit with APT...'
           as_root apt-get install -y lazygit
         else
           install_lazygit_binary
         fi
       fi ;;
-    omarchy) as_root pacman -S --needed --noconfirm "${packages[@]}" ;;
+    omarchy)
+      progress_comm 'Installing missing Pacman packages without refreshing the database...'
+      as_root pacman -S --needed --noconfirm "${packages[@]}" ;;
   esac
+  progress_comm 'Updating the tldr cache...'
   if ! tldr --update; then say 'Warning: tldr cache update failed; retry with tldr --update.'; fi
 }
 
 apple_ssh_add() { /usr/bin/ssh-add --apple-use-keychain "$@"; }
 
 setup_ssh() {
+  trumpet 'Setting up GitHub SSH access...'
   local key="$HOME/.ssh/github_id_ed25519" config="$HOME/.ssh/config" saved_dir=
   if [[ -e "$key" || -L "$key" ]]; then
     say "Skip SSH setup: $key already exists."
@@ -267,6 +299,7 @@ setup_ssh() {
   fi
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
+  progress_comm "Generating $key..."
   ssh-keygen -t ed25519 -f "$key" -C "dogfiles-$(hostname)" </dev/tty
   # Prepending selects this identity before broad Host * defaults; the old file
   # remains intact below it. Keep an existing symlink's target intact as well.
@@ -289,6 +322,7 @@ setup_ssh() {
   temp_dir=
   # ssh-add returns 1 for a reachable agent with no keys, 2 for no agent.
   local agent_status=0
+  progress_comm 'Loading the GitHub key into the SSH agent...'
   ssh-add -l >/dev/null 2>&1 || agent_status=$?
   if [[ "$agent_status" == 2 ]]; then eval "$(ssh-agent -s)"; fi
   if [[ "$platform" == macos ]]; then
@@ -303,13 +337,15 @@ setup_ssh() {
 }
 
 clone_checkout() {
-  if [[ -d "$repo_dir" ]]; then return; fi
+  trumpet 'Preparing the dogfiles checkout...'
+  if [[ -d "$repo_dir" ]]; then say "Using existing checkout: $repo_dir"; return; fi
   if "$dry_run"; then
     say "Would create $(dirname "$repo_dir") and clone https://github.com/panacotar/dogfiles.git into $repo_dir."
     say 'Would set the new checkout origin to git@github.com:panacotar/dogfiles.git.'
     return
   fi
   mkdir -p "$(dirname "$repo_dir")"
+  progress_comm "Cloning dogfiles into $repo_dir..."
   git clone https://github.com/panacotar/dogfiles.git "$repo_dir"
   git -C "$repo_dir" remote set-url origin git@github.com:panacotar/dogfiles.git
 }
@@ -342,6 +378,7 @@ collect_links() {
 }
 
 link_configs() {
+  trumpet 'Linking configuration files...'
   if [[ ! -d "$repo_dir" || ${checkout_pending:-false} == true ]]; then
     say 'Config manifest/source validation is pending until the checkout exists and its identity is verified.'
     say "Would link shared Git/Vim/tmux configs from $repo_dir/conf."
@@ -387,6 +424,7 @@ link_configs() {
     local args=()
     if "$dry_run"; then args+=(--dry-run); fi
     if "$include_monitors"; then args+=(--include-monitors); fi
+    progress_comm 'Processing Omarchy desktop and terminal configuration...'
     bash "$repo_dir/omarchy/install.sh" ${args[@]+"${args[@]}"}
   fi
 }
@@ -399,11 +437,13 @@ clone_plugin() {
     die "Plugin destination already exists but is not a checkout: $destination"
   else
     mkdir -p "$(dirname "$destination")"
+    progress_comm "Installing plugin: ${destination##*/}"
     git clone --depth 1 "$url" "$destination"
   fi
 }
 
 setup_plugins() {
+  trumpet 'Installing shell and tmux plugins...'
   if "$dry_run"; then
     say 'Would install TPM and the tmux plugins configured in tmux.conf (preserving existing checkouts).'
     if [[ "$platform" != omarchy ]]; then say 'Would install Oh My Zsh, zsh-autosuggestions and zsh-syntax-highlighting if missing.'; fi
@@ -411,6 +451,7 @@ setup_plugins() {
   fi
   if [[ "$platform" != omarchy ]]; then
     if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
+      progress_comm 'Installing Oh My Zsh...'
       temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
       curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o "$temp_dir/ohmyzsh.sh"
       ZSH="$HOME/.oh-my-zsh" ZDOTDIR="$HOME" sh "$temp_dir/ohmyzsh.sh" --unattended --keep-zshrc
@@ -431,6 +472,7 @@ setup_plugins() {
 }
 
 setup_login_shell() {
+  trumpet 'Checking the login shell...'
   if [[ "$platform" == omarchy ]]; then say 'Preserve Omarchy login shell and shell configuration.'; return; fi
   if "$dry_run"; then say 'Would validate Zsh startup and make Zsh the login shell if necessary.'; return; fi
   local zsh_bin current_shell
@@ -457,11 +499,13 @@ setup_login_shell() {
 }
 
 verify_tools() {
+  trumpet 'Verifying common CLI commands...'
   local tool missing=false
   for tool in git curl wget unzip zsh vim tldr lazygit tmux gpg tig tree htop sqlite3 exiftool pkg-config gh jq ssh; do
     if ! have "$tool"; then say "Missing command after installation: $tool"; missing=true; fi
   done
   if "$missing"; then die 'Some common tools are unavailable; check the package output above.'; fi
+  say 'All common CLI commands are available.'
 }
 
 main() {
@@ -469,7 +513,7 @@ main() {
   temp_dir=
   trap 'if [[ -n "$temp_dir" ]]; then rm -rf -- "$temp_dir"; fi' EXIT
   trap 'printf "Bootstrap failed at line %s. Fix the reported issue and rerun; completed steps are preserved.\n" "$LINENO" >&2' ERR
-  local arg
+  local arg local_checkout
   for arg in "$@"; do
     case "$arg" in
       --dry-run) dry_run=true ;;
@@ -479,6 +523,10 @@ main() {
       *) usage >&2; die "Unknown option: $arg" ;;
     esac
   done
+  if [[ -n ${BASH_SOURCE[0]:-} && -f ${BASH_SOURCE[0]} ]]; then
+    local_checkout=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+    load_output_helpers "$local_checkout"
+  fi
   [[ "$HOME" == /* ]] || die 'HOME must be absolute.'
   config_root=${XDG_CONFIG_HOME:-$HOME/.config}
   state_root=${XDG_STATE_HOME:-$HOME/.local/state}
@@ -490,8 +538,10 @@ main() {
     repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
   fi
   if ! "$configs_only"; then validate_checkout; fi
+  if ! "$checkout_pending"; then load_output_helpers "$repo_dir"; fi
   say "Checkout: $repo_dir"
   if "$dry_run"; then say 'DRY RUN: no changes will be made.'; fi
+  trumpet "Dogfiles setup: $platform"
   if "$configs_only"; then
     [[ -d "$repo_dir/conf" ]] || die '--configs-only requires a local dogfiles checkout.'
     link_configs
@@ -504,12 +554,19 @@ main() {
     if "$checkout_pending" && ! "$dry_run"; then validate_checkout; fi
     setup_ssh
     clone_checkout
+    load_output_helpers "$repo_dir"
     # Oh My Zsh must exist before validating the linked .zshrc.
     setup_plugins
     link_configs
     setup_login_shell
-    if ! "$dry_run"; then verify_tools; fi
+    if "$dry_run"; then
+      trumpet 'Verifying common CLI commands...'
+      say 'Would verify the installed CLI commands.'
+    else
+      verify_tools
+    fi
   fi
+  if "$dry_run"; then trumpet 'Setup preview complete'; else trumpet 'Dogfiles setup complete'; fi
   say "Finished. Checkout: $repo_dir"
   if ! "$dry_run"; then
     if "$new_ssh_key"; then say 'Manual step: register the printed public key on GitHub, then test: ssh -T git@github.com'; fi

@@ -141,7 +141,7 @@ class BootstrapTest(unittest.TestCase):
         self.template.mkdir()
         for name in ('bootstrap.sh', 'install.sh'):
             shutil.copy(ROOT / name, self.template / name)
-        for name in ('conf', 'omarchy'):
+        for name in ('conf', 'omarchy', 'scripts'):
             shutil.copytree(ROOT / name, self.template / name)
         dispatcher = self.bin / 'dispatcher'
         dispatcher.write_text(MOCK.replace('PYTHON', sys.executable, 1))
@@ -444,6 +444,49 @@ setup_login_shell
         self.assert_success(self.run_script(command + '--dry-run'))
         self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations()
+
+    def test_standalone_dry_run_announces_stages_without_shared_file(self):
+        shutil.rmtree(self.template / 'scripts')
+        before = snapshot(self.home)
+        result = self.run_script('cd /; cat "$TEMPLATE/bootstrap.sh" | bash -s -- --dry-run')
+        self.assert_success(result)
+        stages = [
+            'Dogfiles setup: macos',
+            'Installing common CLI tools...',
+            'Setting up GitHub SSH access...',
+            'Preparing the dogfiles checkout...',
+            'Installing shell and tmux plugins...',
+            'Linking configuration files...',
+            'Checking the login shell...',
+            'Verifying common CLI commands...',
+            'Setup preview complete',
+        ]
+        locations = [result.stdout.index(stage) for stage in stages]
+        self.assertEqual(locations, sorted(locations))
+        self.assertIn('DRY RUN: no changes will be made.', result.stdout)
+        self.assertIn('#################################', result.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_no_mutations()
+
+    def test_bootstrap_loads_shared_announcements_after_cloning(self):
+        helper = self.template / 'scripts/output.sh'
+        with helper.open('a') as out:
+            out.write('\ntrumpet() { printf "SHARED:%s\\n" "$1"; }\n')
+        result = self.run_main(tty=True)
+        self.assert_success(result)
+        self.assertNotIn('SHARED:Installing common CLI tools...', result.stdout)
+        self.assertIn('SHARED:Installing shell and tmux plugins...', result.stdout)
+        self.assertIn('SHARED:Linking configuration files...', result.stdout)
+        self.assertIn('SHARED:Dogfiles setup complete', result.stdout)
+
+    def test_shared_announcements_work_without_terminal_capabilities(self):
+        result = self.run_script('source "$TEMPLATE/scripts/output.sh"\n'
+                                 'init_output true\ntrumpet "A stage"\nprogress_comm "A step"\n',
+                                 env={'TERM': 'dumb'})
+        self.assert_success(result)
+        self.assertIn('#################################\n A stage', result.stdout)
+        self.assertIn('-----> A step', result.stdout)
+        self.assertNotIn('\033', result.stdout)
 
     def test_piped_real_entry_point_uses_terminal_for_key(self):
         result = self.run_script('cat "$TEMPLATE/bootstrap.sh" | bash', tty=True,
