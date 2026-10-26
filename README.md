@@ -11,7 +11,11 @@ curl -fsSL https://raw.githubusercontent.com/panacotar/dogfiles/master/bootstrap
 ```
 
 Run as your normal user in an interactive terminal. The URLs require the script on `master`.
-Missing curl on Debian/Mint? Run `sudo apt-get update && sudo apt-get install -y curl ca-certificates` first.
+Missing curl on Debian/Mint? Run first:
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl ca-certificates
+```
 
 ### What it sets up
 
