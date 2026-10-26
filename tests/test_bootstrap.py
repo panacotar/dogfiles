@@ -469,8 +469,9 @@ setup_login_shell
         self.assertEqual(snapshot(self.home), before)
         calls = self.calls()
         defaults = [args for name, args in calls if name == 'defaults']
-        self.assertEqual(defaults, [['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false']])
-        self.assertFalse(any(name in ('sudo', 'osascript', 'pmset', 'systemsetup', 'chflags')
+        # The user can extend conf/macos with more personal preferences.
+        self.assertIn(['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false'], defaults)
+        self.assertFalse(any(name in ('osascript', 'pmset', 'systemsetup', 'chflags')
                              for name, _ in calls))
         self.assertFalse(any(name == 'brew' and args != ['shellenv'] for name, args in calls))
 
@@ -481,11 +482,12 @@ setup_login_shell
         self.assertIn('macOS setting failed at line', result.stderr)
         self.assertNotIn('macOS settings applied.', result.stdout)
 
-    def test_macos_settings_only_apply_personal_preference_without_terminal(self):
+    def test_macos_settings_apply_user_preferences_without_terminal(self):
         result = self.run_script('bash "$TEMPLATE/conf/macos"')
         self.assert_success(result)
         mutations = [[name, args] for name, args in self.calls() if name not in ('uname', 'id')]
-        self.assertEqual(mutations, [['defaults', ['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false']]])
+        self.assertIn(['defaults', ['write', '-g', 'ApplePressAndHoldEnabled', '-bool', 'false']], mutations)
+        self.assertTrue(all(name in ('defaults', 'sudo') for name, _ in mutations))
 
     def test_macos_settings_reject_linux_without_applying_anything(self):
         result = self.run_script('bash "$TEMPLATE/conf/macos"', env={'MOCK_OS': 'Linux'})
@@ -635,6 +637,25 @@ setup_login_shell
         (self.bin / 'tldr').unlink()
         result = self.run_script(LIBRARY + '\nplatform=macos; package_list; printf "%s\\n" "${packages[@]}"\n')
         self.assertIn('tealdeer', result.stdout)
+
+    def test_package_constants_preserve_platform_package_sets(self):
+        (self.bin / 'tldr').unlink()
+        expected = {
+            'macos': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite exiftool pkgconf gh jq ca-certificates',
+            'debian': 'git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates',
+            'omarchy': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates',
+        }
+        for platform, packages in expected.items():
+            result = self.run_script(LIBRARY + '\nplatform=' + platform + '; package_list; printf "%s\\n" "${packages[@]}"\n')
+            self.assert_success(result)
+            self.assertCountEqual(result.stdout.splitlines(), packages.split())
+        code = LIBRARY + '\nplatform=debian; package_list; printf "%s\\n" "${packages[@]}"\n'
+        x11 = self.run_script(code, env={'DISPLAY': ':0'})
+        self.assert_success(x11)
+        self.assertCountEqual(x11.stdout.splitlines(), expected['debian'].split() + ['xclip'])
+        wayland = self.run_script(code, env={'DISPLAY': ':0', 'WAYLAND_DISPLAY': 'wayland-0'})
+        self.assert_success(wayland)
+        self.assertCountEqual(wayland.stdout.splitlines(), expected['debian'].split())
 
     @unittest.skipUnless(shutil.which('zsh'), 'Zsh is not available')
     def test_fresh_zsh_startup_without_optional_integrations(self):

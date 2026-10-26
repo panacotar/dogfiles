@@ -1,6 +1,63 @@
 #!/usr/bin/env bash
+# First-machine setup, in order:
+#  1. Parse options, validate HOME/XDG paths, and detect macOS, Debian-family Linux,
+#     or installed Omarchy. Require a normal user/terminal for a full installation.
+#  2. Validate an existing ~/code/darius/dogfiles checkout, preserving its branch,
+#     remotes and edits; defer identity checks until Git is available if necessary.
+#  3. Install missing prerequisites/common tools with Homebrew, APT or Pacman:
+#     git, curl, wget, unzip, zsh, vim, tldr (tealdeer), lazygit, tmux, gpg, tig,
+#     tree, htop, sqlite3, exiftool, pkg-config, gh, jq, and CA certificates.
+#     Linux also gets OpenSSH; Debian-family X11 sessions also get xclip.
+#     macOS checks Apple command-line tools and installs Homebrew if missing.
+#     Debian refreshes APT metadata; Omarchy uses its existing Pacman database.
+#  4. Use a checksum-verified x86_64/ARM64 Lazygit release if APT cannot provide it,
+#     preserve an existing tldr client, and update the tldr cache.
+#  5. Skip SSH setup if ~/.ssh/github_id_ed25519 exists. Otherwise generate it,
+#     back up/configure the GitHub SSH identity, and load the key into an agent
+#     (with Keychain on macOS). Print the public key for manual GitHub registration.
+#  6. Create ~/code/darius and clone dogfiles over HTTPS if absent; set only a new
+#     checkout's origin to SSH. Existing checkout remotes are left as they are.
+#  7. On macOS/Debian, install Oh My Zsh while keeping .zshrc, plus autosuggestions
+#     and syntax highlighting. On all platforms, install TPM and the tmux plugins
+#     declared in conf/tmux.conf, preserving existing plugin checkouts.
+#  8. Validate conf/*.links manifests and config destinations, back up conflicts
+#     under the XDG state directory, and create symlinks for Git/Vim/tmux plus
+#     platform-specific shell/application configs. Leave correct links untouched.
+#     On macOS, link conf/macos as ~/.macos; applying its settings is install.sh's
+#     responsibility. Git identity/ignore/signing come from the linked gitconfig.
+#  9. On Omarchy, delegate desktop/terminal config to omarchy/install.sh, preserve
+#     its shell setup, and restore monitor settings only with --include-monitors.
+# 10. On macOS/Debian, validate Zsh startup and make it the login shell; print a
+#     manual command if blocked. Verify installed commands and print next steps.
+#
+# --dry-run previews these steps without changes, downloads, logs or prompts.
+# --configs-only only applies config links from a local checkout; both flags can
+# be combined. Temporary downloads are cleaned up on exit.
+# Security tools (including WPScan), runtimes and optional apps belong to the
+# separate install.sh. This script does not configure or trust third-party Brew
+# taps; Homebrew may still print diagnostics about taps already on the machine.
+#
 # Standalone entry point: keep all mutations behind dry_run/configs_only checks.
 set -Eeuo pipefail
+
+# Edit these package lists to customize the bootstrap. Platform lists are added
+# to COMMON_PACKAGES; use native package names for that platform.
+readonly -a COMMON_PACKAGES=(
+  git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop jq ca-certificates
+)
+readonly -a MACOS_PACKAGES=(
+  lazygit sqlite exiftool pkgconf gh
+)
+readonly -a DEBIAN_PACKAGES=(
+  sqlite3 libimage-exiftool-perl pkg-config gh openssh-client
+)
+# Lazygit is handled separately on Debian: APT when available, otherwise a binary.
+readonly -a DEBIAN_X11_PACKAGES=(
+  xclip
+)
+readonly -a OMARCHY_PACKAGES=(
+  lazygit sqlite perl-image-exiftool pkgconf github-cli openssh
+)
 
 usage() {
   cat <<'HELP'
@@ -88,12 +145,15 @@ find_brew() {
 }
 
 package_list() {
+  packages=(${COMMON_PACKAGES[@]+"${COMMON_PACKAGES[@]}"})
   case "$platform" in
-    macos) packages=(git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite exiftool pkgconf gh jq ca-certificates) ;;
+    macos) packages+=(${MACOS_PACKAGES[@]+"${MACOS_PACKAGES[@]}"}) ;;
     debian)
-      packages=(git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates)
-      if [[ -n ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then packages+=(xclip); fi ;;
-    omarchy) packages=(git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates) ;;
+      packages+=(${DEBIAN_PACKAGES[@]+"${DEBIAN_PACKAGES[@]}"})
+      if [[ -n ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
+        packages+=(${DEBIAN_X11_PACKAGES[@]+"${DEBIAN_X11_PACKAGES[@]}"})
+      fi ;;
+    omarchy) packages+=(${OMARCHY_PACKAGES[@]+"${OMARCHY_PACKAGES[@]}"}) ;;
   esac
   # Several tldr implementations share the command; avoid replacing/conflicting
   # with a working one the user already has (e.g. tlrc installed through Brew).
