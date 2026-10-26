@@ -1,0 +1,2 @@
+# Link the optional preferences script; never execute it during bootstrap.
+macos|home|.macos

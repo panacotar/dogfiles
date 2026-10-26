@@ -1,0 +1,5 @@
+# source relative to conf/ | destination root | relative destination
+gitconfig|home|.gitconfig
+gitignore|home|.gitignore
+vimrc|home|.vimrc
+tmux.conf|home|.tmux.conf

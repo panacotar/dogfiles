@@ -1,394 +1,165 @@
-#!/bin/zsh
+#!/usr/bin/env bash
+# Optional second stage. bootstrap.sh owns common tools, shells and config links.
+if [ -n "${ZSH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
+set -euo pipefail
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 
-# Inspired by:
-# https://github.com/pavkam
+if [[ ${1:-} == --help || ${1:-} == -h ]]; then
+  cat <<'HELP'
+Usage: bash install.sh
 
-BOLD=$(tput bold)
-NORMAL=$(tput sgr0)
-# Colors .
-RED=$(tput setaf 1)
-GREEN=$(tput setaf 2)
-
-LOG_FILE=~/.dogfile.log
-
-# Define a function which rename a `target` file to `target.backup` if the file
-# exists and if it's a 'real' file, ie not a symlink
-backup() {
-  target=$1
-  if [ -e "$target" ]; then           # Does the config file already exist?
-    if [ ! -L "$target" ]; then       # as a pure file?
-      mv "$target" "$target.backup"   # Then backup it
-      echo "-----> Moved your old $target config file to $target.backup"
-    fi
-  fi
-}
-
-# Create a symlink
-# Usage: $ symlink original target_destination
-symlink() {
-  file=$1
-  link=$2
-  if [ ! -e "$link" ]; then
-    echo "-----> Symlinking your new $link"
-    ln -s $file $link
-  fi
-}
-
-function log() {
-  TIME=$(date '+%d/%m/%Y %H:%M:%S')
-  echo "[$TIME] $1" | sed -r "s/\\x1B\\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" >>$LOG_FILE
-}
-
-function log_echo() {
-  log "$1"
-  echo "$1"
-}
-
-function err() {
-  log_echo "${RED}Error: $1"
-  echo "Check '$LOG_FILE' for details."
-  exit 1
-}
-
-attempt_run() {
-  $* || (echo "\nfailed" 1>&2 && exit 1)
-}
-
-# Run command with output redirected to log file
-function run() {
-  "$@" 1>>"$LOG_FILE" 2>>"$LOG_FILE"
-}
-
-trumpet() {
-  echo "${GREEN}\n#################################\n $1 \n#################################\n${NORMAL}"
-}
-
-function is_package_installed() {
-  [ -z "$2" ] && err "Expected two arguments to function."
-  run $1 "$2"
-}
-
-function check_and_collect_packages() {
-  local check_command=$1
-  shift
-  local packages_to_install=""
-
-  for package in "$@"; do
-    if ! is_package_installed "$check_command" "$package"; then
-      packages_to_install="${packages_to_install:+$packages_to_install }$package"
-    fi
-  done
-
-  echo "$packages_to_install"
-}
-
-function install_packages() {
-  if [[ -z "$1" || -z "$2" ]]; then
-    echo "Expected two arguments to function."
-    err "$0 expects two arguments: cmd string + package list string."
-    return 1
-  fi
-
-  # In ZSH, $=VAR is doing word splitting => array
-  local -a CMD=($=1)
-  local -a PACKAGES=($=2)
-
-  trumpet "Installing packages [${PACKAGES[*]}] with '${CMD[*]}'..."
-
-  if ! "$CMD[@]" "$PACKAGES[@]" 1>>$LOG_FILE 2>>$LOG_FILE; then
-    err "Failed to install one or more packages from the list ['$2']."
-  fi
-}
-
-progress_comm() {
-  echo "\n\n----->$1 \n"
-}
-
-# Detect the OS + exit if something other than Linux/(Darwin) MacOS
-detect_os() {
-  UNAME_OUT="$(uname -s)"
-  case "${UNAME_OUT}" in
-      Linux*)     OS=linux;;
-      Darwin*)    OS=mac;;
-      *)          echo "\n> install.sh not supporting OS: ${UNAME_OUT}\nExiting..." && exit 0
-  esac
-}
-detect_os
-
-# Setup StripMe automator service for MacOS (Finder)
-# Initially created with the Automator app
-# allowing to right-click on a file and choose "StripMe" to run the exiftool command on it
-setup_strip_automator() {
-  if [ $OS = 'mac' ]; then
-    progress_comm "Setting up StripMe automator service for MacOS..."
-    mkdir -p ~/Library/Services
-    cp -r misc/automator-macos/StripMe.workflow ~/Library/Services/StripMe.workflow
-  fi
-}
-
-install_rbenv() {
-  if command -v rbenv&>/dev/null; then
-    progress_comm "Already installed: rbenv"
-    return 0
-  fi
-
-  trumpet "Installing rbenv..."
-  progress_comm "Cleaning up rbenv files"
-  rvm implode &>/dev/null && rm -rf ~/.rvm
-  rm -rf ~/.rbenv
-
-  if [ $OS = 'linux' ]; then
-    install_packages "apt install -y" "build-essential tklib zlib1g-dev libssl-dev libffi-dev libxml2 libxml2-dev libxslt1-dev libreadline-dev libyaml-dev"
-    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-  elif [ $OS = 'mac' ]; then
-    install_packages "brew install" "rbenv libyaml"
-  fi
-}
-
-install_lazygit_linux() {
-  if command -v lazygit &>/dev/null; then
-    trumpet "Already installed: lazygit"
-    return 0
-  fi
-
-  trumpet "Installing lazygit..."
-  LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
-  attempt_run curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-  tar xf lazygit.tar.gz lazygit
-  attempt_run sudo install lazygit /usr/local/bin
-  rm lazygit.tar.gz lazygit 
-}
-
-
-install_go_linux() {
-  # Prevent installing it if `which go` returns a string
-  if command -v go &>/dev/null; then
-    trumpet "Already installed: Golang"
-    return 0
-  fi
-  trumpet "Installing Golang..."
-  sudo apt autoremove --purge '^golang-1.22*' -y
-  sudo apt install golang-1.22 golang-1.22-go golang-1.22-src golang-1.22-doc -y
-}
-
-echo "Proceed with installing ${BOLD}${(C)OS}${NORMAL} configs? (y/n)"
-read confirm
-
-if [ $confirm != 'y' ]
-then
-  echo "Exiting..."
+Optional post-installation for macOS and Debian/Mint after bootstrap.sh.
+Prompts cover Ruby/Go/Python/Node tooling, security tools, DBeaver, Zellij,
+applications, and desktop/hardware extras. No shared dotfiles are relinked.
+For the first-machine setup or its preview, use bash bootstrap.sh [--dry-run].
+Omarchy uses bootstrap.sh and omarchy/install.sh instead.
+HELP
   exit 0
 fi
+[[ $# == 0 ]] || { printf 'Unknown argument: %s\n' "$1" >&2; exit 2; }
+[[ $(id -u) != 0 ]] || { echo 'Run as your normal user, not root.' >&2; exit 1; }
+exec 3</dev/tty
+ask() {
+  local answer
+  printf '\n%s [y/N] ' "$1"
+  IFS= read -r answer <&3
+  [[ "$answer" == y || "$answer" == Y ]]
+}
+root() { sudo -v <&3; sudo "$@"; }
+packages() {
+  if [[ "$os" == macos ]]; then brew install "$@"; else root apt-get install -y "$@"; fi
+}
+clone_missing() {
+  if [[ -d "$2/.git" ]]; then return; fi
+  [[ ! -e "$2" && ! -L "$2" ]] || { printf 'Existing directory needs review: %s\n' "$2" >&2; exit 1; }
+  mkdir -p "$(dirname "$2")"
+  git clone "$1" "$2"
+}
 
-if [ $OS = 'linux' ]; then
-  echo "${GREEN}################################"
-  echo "${GREEN}#####   Installing Linux   #####${NORMAL}"
-
-  SYMLINK_FILES=(
-    zshrc aliases custom_commands.sh gitconfig gitignore irbrc rspec
-    pryrc tmux.conf vimrc alacritty.toml alacritty-theme-default.toml
-  )
-
-  echo "\nDo you want to install ${BOLD}DBeaver${NORMAL}? (y/n)"
-  read dbeaver_confirm
-
-  echo "\nDo you want to install ${BOLD}Zellij${NORMAL}? (y/n)"
-  read zellij_confirm
-
-  echo "\nDo you want to install ${BOLD}sec related packages${NORMAL}? (y/n)"
-  read install_sec
-
-  # Change close-tab keybinding in the terminal
-  dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
-
-  if [ $dbeaver_confirm = 'y' ]
-  then
-    trumpet "Install DBeaver..."
-    attempt_run sudo  wget -O /usr/share/keyrings/dbeaver.gpg.key https://dbeaver.io/debs/dbeaver.gpg.key
-    attempt_run echo "deb [signed-by=/usr/share/keyrings/dbeaver.gpg.key] https://dbeaver.io/debs/dbeaver-ce /" | sudo tee /etc/apt/sources.list.d/dbeaver.list
-    attempt_run sudo apt-get update && sudo apt-get install dbeaver-ce
-  fi
-
-  install_go_linux
-
-  trumpet "Updating the local package index..."
-  attempt_run sudo apt update
-
-  trumpet "Upgrading the installed packages..."
-  attempt_run sudo apt upgrade -y
-
-  PACKS=(
-    fprintd libpam-fprintd sqlite3 libsqlite3-dev pkg-config xclip 
-    libavcodec-extra openvpn exiftool tldr tmux gpg tig tree htop
-    cheese pavucontrol python3-pip csvlens
-  )
-
-
-  if [ $install_sec = 'y' ]
-  then
-    SEC_PACKS=(
-      nmap cewl crunch wfuzz wpscan seclists hashcat python3-impacket
-    )
-
-    PACKS+=( "${SEC_PACKS[@]}" )
-
-    trumpet "Installing wpscan..."
-    attempt_run sudo apt install ruby-dev -y
-    attempt_run sudo gem install wpscan
-
-    trumpet "Installing nikto (the git version)..."
-    attempt_run git clone https://github.com/sullo/nikto ~/code/misc/nikto
-
-    trumpet "Installing gobuster..."
-    attempt_run go install github.com/OJ/gobuster/v3@latest
-  fi
-
-  TO_INSTALL=$(check_and_collect_packages "dpkg -s" "${PACKS[@]}")
-
-  if [ "$TO_INSTALL" != "" ]; then
-    install_packages "apt install -y" "$TO_INSTALL"
-  fi
-
-  trumpet "Updating tldr..."
-  attempt_run tldr -u
-
-  trumpet "Configuring mozilla smooth scrolling..."
-  attempt_run echo export MOZ_USE_XINPUT2=1 | sudo tee /etc/profile.d/use-xinput2.sh
-
-  trumpet "Specifying the Broadcast RGB (for external monitors)...\ ! You might need to change the output from DP-2 to others (run xrandr to list outputs)"
-  attempt_run echo 'xrandr --output DP-2 --set "Broadcast RGB" "Full"' >> ~/.xprofile
-
-  if [ $zellij_confirm = 'y' ]
-  then
-    source $PWD/zellij/install_zellij.sh
-    mkdir -p $HOME/.config/zellij-me
-    symlink $PWD/zellij/config.kdl $HOME/.config/zellij-me/config.kdl
-  fi
-
-  progress_comm "Setup TPM - Tmux Plugin Manager"
-  attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-  progress_comm "Installing Alacritty terminfo"
-  wget https://raw.githubusercontent.com/alacritty/alacritty/master/extra/alacritty.info && tic -xe alacritty,alacritty-direct alacritty.info && rm alacritty.info
-
-  install_lazygit_linux
-  install_rbenv
-
-elif [ $OS = 'mac' ]; then
-  echo "${GREEN}##############################"
-  echo "${GREEN}#####   Installing Mac   #####${NORMAL}"
-
-  SYMLINK_FILES=(
-    zshrc aliases custom_commands.sh gitconfig gitignore irbrc macos rspec 
-    pryrc tmux.conf vimrc alacritty.toml alacritty-theme-default.toml
-  )
-
-  PACKS=(
-    tldr lazygit sqlite postgresql@15 libpq tmux gpg tig tree pyenv pyenv-virtualenv exiftool
-    overmind
-  )
-
-  ###################
-  # Sec
-  ####################
-  echo "\nDo you want to install ${BOLD}sec related packages${NORMAL}? (y/n)"
-  read install_sec
-
-  if [ $install_sec = 'y' ]
-  then
-    SEC_PACKS=(
-      nmap nikto wpscan
-    )
-
-    PACKS+=( "${SEC_PACKS[@]}" )
-  fi
-
-  setup_strip_automator
-
-  install_rbenv
-
-  TO_INSTALL=$(check_and_collect_packages "brew list" "${PACKS[@]}")
-
-  if [ "$TO_INSTALL" != "" ]; then
-    install_packages "brew install" "$TO_INSTALL"
-  fi
-
-  # Brew cask packages
-  progress_comm "Checking brew cask packages..."
-  PACKS=(
-    visual-studio-code alacritty
-  )
-
-  TO_INSTALL=$(check_and_collect_packages "brew list" "${PACKS[@]}")
-
-  if [ "$TO_INSTALL" != "" ]; then
-    install_packages "brew install --cask" "$TO_INSTALL"
-  fi
-
-  progress_comm "Trust Alacritty"
-  attempt_run xattr -dr com.apple.quarantine "/Applications/Alacritty.app"
-
-  progress_comm "Link brew libpq"
-  attempt_run brew link --force libpq
-
-  progress_comm "Updating tldr..."
-  attempt_run tldr -u
-
-  progress_comm "Changing MacOs configs"
-  # Repeat key instead of showing the alternate characters palette
-  defaults write -g ApplePressAndHoldEnabled -bool false
-
-  progress_comm "Setup TPM - Tmux Plugin Manager"
-  attempt_run git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-  trumpet "If installing iTerm2, import the 'Dario_iterm2_profile.json' into it. Or use Alacritty as an alternative"
-
-else
-  echo "Exiting..."
-  exit 0
-fi
-
-# Backup the target file located at `~/.$name` and symlink `$name` to `~/.$name`
-# SYMLINK_FILES different files based on the OS
-for name in ${SYMLINK_FILES[@]}; do
-  if [ ! -d "$name" ]; then
-    target="$HOME/.$name"
-    backup $target
-    symlink $PWD/$name $target
-  fi
+case "$(uname -s)" in
+  Darwin) os=macos ;;
+  Linux)
+    if command -v pacman >/dev/null 2>&1 && { pacman -Q omarchy >/dev/null 2>&1 || [[ -d /usr/share/omarchy || -d "$HOME/.local/share/omarchy" ]]; }; then
+      echo 'This post-installer targets macOS/Debian/Mint. On Omarchy, use bootstrap.sh.' >&2
+      exit 1
+    fi
+    ID= ID_LIKE=
+    . /etc/os-release
+    case " $ID $ID_LIKE " in
+      *' debian '*|*' ubuntu '*|*' linuxmint '*) os=debian ;;
+      *) echo 'Unsupported distribution.' >&2; exit 1 ;;
+    esac ;;
+  *) echo 'Unsupported operating system.' >&2; exit 1 ;;
+esac
+for tool in git curl zsh jq gpg; do
+  command -v "$tool" >/dev/null 2>&1 || { echo "Missing $tool; run bootstrap.sh first." >&2; exit 1; }
 done
-
-# Install zsh-syntax-highlighting plugin
-CURRENT_DIR=`pwd`
-ZSH_PLUGINS_DIR="$HOME/.oh-my-zsh/custom/plugins"
-mkdir -p "$ZSH_PLUGINS_DIR" && cd "$ZSH_PLUGINS_DIR"
-if [ ! -d "$ZSH_PLUGINS_DIR/zsh-syntax-highlighting" ]; then
-  echo "-----> Installing zsh plugin 'zsh-syntax-highlighting'..."
-  git clone https://github.com/zsh-users/zsh-autosuggestions
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting
-fi
-cd "$CURRENT_DIR"
-
-setopt nocasematch
-if [[ ! `uname` =~ "Darwin" ]]; then
-  CODE_PATH=~/Library/Application\ Support/Code/User
+if [[ "$os" == macos ]]; then
+  if [[ -x /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi
+  command -v brew >/dev/null 2>&1 || { echo 'Run bootstrap.sh to install Homebrew first.' >&2; exit 1; }
 else
-  # Else, it's a Linux
-  CODE_PATH=~/.config/Code/User
+  root apt-get update
+fi
 
-  # If no folder, then it's WSL
-  if [ ! -e $CODE_PATH ]; then
-    CODE_PATH=~/.vscode-server/data/Machine
+tmp_dir=
+trap 'if [[ -n "$tmp_dir" ]]; then rm -rf -- "$tmp_dir"; fi' EXIT
+trap 'printf "Post-installation failed at line %s; fix the reported issue and rerun.\n" "$LINENO" >&2' ERR
+
+if ask 'Install Ruby tooling (rbenv and ruby-build)?'; then
+  if [[ "$os" == macos ]]; then
+    packages rbenv ruby-build libyaml
+  else
+    packages build-essential tk-dev zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
+    clone_missing https://github.com/rbenv/rbenv.git "$HOME/.rbenv"
+    clone_missing https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build"
+  fi
+  echo 'Choose the Ruby version for your projects with: rbenv install VERSION'
+fi
+if ask 'Install Go?'; then
+  if [[ "$os" == macos ]]; then packages go; else packages golang-go; fi
+fi
+if ask 'Install Python tooling (pyenv and pyenv-virtualenv)?'; then
+  if [[ "$os" == macos ]]; then
+    packages pyenv pyenv-virtualenv
+  else
+    packages build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev xz-utils tk-dev libffi-dev liblzma-dev
+    clone_missing https://github.com/pyenv/pyenv.git "$HOME/.pyenv"
+    clone_missing https://github.com/pyenv/pyenv-virtualenv.git "$HOME/.pyenv/plugins/pyenv-virtualenv"
   fi
 fi
-
-zsh ~/.zshrc
-
-echo "👌  Carry on with git setup!"
-
-: '
-  To install packages (common):
-code
-calibre
-'
+if ask 'Install Node tooling (nvm, without choosing a Node version)?'; then
+  if [[ ! -s "$HOME/.nvm/nvm.sh" ]]; then
+    [[ ! -e "$HOME/.nvm" ]] || { echo 'Review the existing incomplete ~/.nvm installation.' >&2; exit 1; }
+    version=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -er .tag_name)
+    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid nvm release.' >&2; exit 1; }
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
+    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$version/install.sh" -o "$tmp_dir/nvm.sh"
+    PROFILE=/dev/null NVM_DIR="$HOME/.nvm" bash "$tmp_dir/nvm.sh"
+    rm -rf -- "$tmp_dir"; tmp_dir=
+  fi
+  echo 'Open a new terminal, then run nvm install --lts (or a project-specific version).'
+fi
+if ask 'Install security tools?'; then
+  if [[ "$os" == macos ]]; then
+    packages nmap nikto wpscan
+  else
+    packages nmap cewl crunch wfuzz seclists hashcat python3-impacket ruby-dev
+    root gem install wpscan
+    clone_missing https://github.com/sullo/nikto.git "$HOME/code/misc/nikto"
+    command -v go >/dev/null 2>&1 || packages golang-go
+    go install github.com/OJ/gobuster/v3@latest
+  fi
+fi
+if ask 'Install DBeaver?'; then
+  if [[ "$os" == macos ]]; then
+    brew install --cask dbeaver-community
+  else
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
+    curl -fsSL https://dbeaver.io/debs/dbeaver.gpg.key -o "$tmp_dir/dbeaver.key"
+    gpg --batch --yes --dearmor -o "$tmp_dir/dbeaver.gpg" "$tmp_dir/dbeaver.key"
+    root install -m 0644 "$tmp_dir/dbeaver.gpg" /usr/share/keyrings/dbeaver.gpg
+    printf 'deb [signed-by=/usr/share/keyrings/dbeaver.gpg] https://dbeaver.io/debs/dbeaver-ce /\n' | root tee /etc/apt/sources.list.d/dbeaver.list >/dev/null
+    root apt-get update
+    packages dbeaver-ce
+    rm -rf -- "$tmp_dir"; tmp_dir=
+  fi
+fi
+if ask 'Install Zellij?'; then
+  if [[ "$os" == macos ]]; then packages zellij; else bash "$script_dir/zellij/install_zellij.sh"; fi
+  echo 'Zellij uses the config linked by bootstrap.sh under the XDG config directory.'
+fi
+if [[ "$os" == macos ]]; then
+  if ask 'Install development applications and services (VS Code, Alacritty, PostgreSQL 15, libpq, Overmind)?'; then
+    packages postgresql@15 libpq overmind
+    brew install --cask visual-studio-code alacritty
+    brew link --force libpq
+  fi
+  if ask 'Install the StripMe Finder service?'; then
+    mkdir -p "$HOME/Library/Services"
+    cp -R "$script_dir/misc/automator-macos/StripMe.workflow" "$HOME/Library/Services/"
+  fi
+  if ask 'Enable keyboard repeat instead of the accented-character popup?'; then
+    defaults write -g ApplePressAndHoldEnabled -bool false
+  fi
+else
+  if ask 'Install desktop/hardware extras (fingerprint support, codecs, VPN, webcam, audio controls)?'; then
+    packages fprintd libpam-fprintd libavcodec-extra openvpn cheese pavucontrol python3-pip
+  fi
+  if ask 'Set GNOME Terminal close-tab to Ctrl+Alt+W?'; then
+    dconf write /org/gnome/terminal/legacy/keybindings/close-tab "'<Primary><Alt>w'"
+  fi
+  if ask 'Enable Firefox XInput2 smooth scrolling?'; then
+    printf 'export MOZ_USE_XINPUT2=1\n' | root tee /etc/profile.d/use-xinput2.sh >/dev/null
+  fi
+  if ask 'Add the legacy external-monitor RGB setting (DP-2) to ~/.xprofile?'; then
+    monitor_line='xrandr --output DP-2 --set "Broadcast RGB" "Full"'
+    if ! grep -Fxq "$monitor_line" "$HOME/.xprofile" 2>/dev/null; then printf '%s\n' "$monitor_line" >> "$HOME/.xprofile"; fi
+  fi
+  if ask 'Install Alacritty terminfo?'; then
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles-post.XXXXXX")
+    curl -fsSL https://raw.githubusercontent.com/alacritty/alacritty/master/extra/alacritty.info -o "$tmp_dir/alacritty.info"
+    tic -xe alacritty,alacritty-direct "$tmp_dir/alacritty.info"
+    rm -rf -- "$tmp_dir"; tmp_dir=
+  fi
+fi
+printf '\nPost-installation complete. Open a new terminal for optional runtime integrations.\n'

@@ -1,9 +1,128 @@
+## Set up a new machine
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/panacotar/dogfiles/master/bootstrap.sh | bash
+```
+
+Preview first, without making changes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/panacotar/dogfiles/master/bootstrap.sh | bash -s -- --dry-run
+```
+
+These commands work once `bootstrap.sh` is published on `master`. Run as your normal
+user in an interactive terminal. The initial download requires curl; on a minimal
+Debian/Mint installation, install it first with `sudo apt-get update` and
+`sudo apt-get install -y curl ca-certificates`. macOS includes curl. Terminal input
+for passphrases and administrator authentication is read from `/dev/tty`, so the
+piped command can still prompt.
+
+The bootstrap supports macOS, Debian/Ubuntu/Linux Mint, and already-installed
+Omarchy. It installs missing prerequisites, creates `~/code/darius` if necessary,
+and clones this repository into `~/code/darius/dogfiles`. New clones use HTTPS for
+the download and SSH for their origin afterward. Existing checkouts, branches,
+remotes, and uncommitted edits are preserved; other repositories at that path are
+rejected. Keep the checkout in place because the installed configs link into it.
+
+On macOS, missing Apple command-line tools may open an installation dialog.
+Complete that installation and rerun the bootstrap. Homebrew is installed if
+needed. Debian-family systems use APT; Omarchy uses its existing Pacman database.
+If Pacman reports stale packages, update through Omarchy and rerun; bootstrap does
+not independently refresh the database or perform a system upgrade.
+
+### Common CLI tools
+
+Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, tmux, GPG, tig, tree, htop, SQLite,
+ExifTool, pkg-config, GitHub CLI (`gh`), and jq. Package names vary by platform;
+tealdeer supplies `tldr` unless a working client already exists. On Debian/Mint,
+Lazygit uses APT when available, otherwise a checksum-verified upstream binary for
+x86_64 or ARM64. X11 Debian/Mint sessions also receive xclip.
+
+On macOS and Debian/Mint, bootstrap installs Oh My Zsh, autosuggestions, syntax
+highlighting, TPM and the configured tmux plugins, then changes the login shell to
+Zsh after validating its config. Optional runtimes are not required for startup.
+Open a new terminal afterward. If `chsh` is blocked, follow the printed command.
+
+### SSH and GitHub
+
+If `~/.ssh/github_id_ed25519` already exists, the entire SSH setup stage is skipped.
+Otherwise the bootstrap creates a new Ed25519 key with a passphrase prompt,
+configures its GitHub identity, loads it into an agent (using Keychain on macOS),
+and prints the public key. Add it manually under
+[GitHub SSH keys](https://github.com/settings/ssh/new), then test:
+
+```bash
+ssh -T git@github.com
+```
+
+GitHub prints a successful authentication message but returns status 1 because it
+does not provide shell access. If using the SSH signing settings in `conf/gitconfig`,
+also register the public key as a signing key. Never commit private keys or credentials.
+If setup skipped an existing key, its SSH config and agent loading remain yours to manage.
+
+### Configs, reruns, and backups
+
+Shared assets live in `conf/`; `*.links` manifests map reviewed files into your home
+and `${XDG_CONFIG_HOME:-$HOME/.config}`. Omarchy retains its own manifest and installer.
+Config directories must use absolute XDG paths. Existing conflicting files and
+links are backed up under `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`
+in a unique directory, preserving their full destination paths. Correct links are
+left alone. To undo a link, remove it and restore the original from its printed
+backup location. Config sources are not copied: edits through installed links
+change the checkout.
+
+From an existing checkout, preview or apply configuration links without package,
+SSH, repository, plugin, or login-shell setup:
+
+```bash
+bash ~/code/darius/dogfiles/bootstrap.sh --configs-only --dry-run
+bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
+```
+
+Use this when migrating installed links from the former root-level config paths.
+`--configs-only` uses the script’s own checkout when invoked from a local file.
+The historical Alacritty config path is linked alongside its current XDG path.
+Legacy Bash, PulseAudio, redshift, and desktop launcher examples are retained under
+`conf/` but are not automatically applied. The macOS preferences script is linked
+as `~/.macos`, without being executed.
+
+Dry-run prints platform/packages, SSH work, checkout actions, config links/backups,
+plugins and login-shell changes. It does not run sudo, install anything, write
+logs, create directories, clone repositories, generate keys, start agents, or
+change files or the shell. Without a local checkout, it describes the config stage
+and marks file-level checks as pending. Once a checkout is present, it checks the
+actual manifests, sources and destination conflicts. It forwards dry-run to the
+Omarchy config installer too.
+
+### Optional post-installation
+
+Run the separate second stage whenever you want its extras:
+
+```bash
+bash ~/code/darius/dogfiles/install.sh
+```
+
+It prompts for Ruby tooling (rbenv/ruby-build), Go, Python tooling
+(pyenv/pyenv-virtualenv), Node tooling (nvm), security tools, DBeaver, Zellij, and
+platform-specific development apps, services, and desktop/hardware settings.
+Each choice defaults to no. It does not reinstall common packages, install Oh My
+Zsh, or relink shared configs. It works from any working directory on macOS and
+Debian/Mint; Omarchy uses its own package/application management.
+
+Choose language versions per project after installing managers, for example
+`rbenv install VERSION`, `pyenv install VERSION`, or `nvm install --lts` in a new
+terminal. Git identity can be adjusted with `bash ~/code/darius/dogfiles/git_setup.sh`.
+
 ## Omarchy desktop configuration
 
-On Omarchy, use the separate installer below. The older `install.sh` described
-later in this README targets Ubuntu/macOS and must not be used to set up Omarchy.
-The existing root-level terminal files remain for that older setup; the Omarchy
-terminal settings live under `omarchy/config/`.
+The bootstrap detects an existing Omarchy installation, installs common CLI tools,
+links shared Git/Vim/tmux settings, and invokes `omarchy/install.sh`. It preserves
+Omarchy’s shell and terminal integration; Oh My Zsh and the shared Zsh config are
+only installed on macOS and Debian/Mint. Install Omarchy itself first.
+
+For desktop configuration only, use the separate installer below. The optional
+root `install.sh` targets macOS/Debian/Mint and must not be used on Omarchy.
+Terminal and desktop settings remain under `omarchy/config/`.
 
 1. Install Omarchy and your required applications, including
    `openai-codex-desktop` for the Super + Shift + A shortcut.
@@ -55,105 +174,18 @@ relative path to that manifest, and rerun the installer. Do not add caches,
 credentials, generated themes, or backup files. The installer does not install
 packages, apply themes, reload services, commit, or push.
 
-## Toolset
+## Development checks
 
-- [oh-my-zsh](http://ohmyz.sh/)
-- [git](https://git-scm.com/)
-- Ruby via [`rbenv`](https://github.com/rbenv/rbenv)
-
-
-### Change to nearby update servers
-From the Software Sources app.
-
-```
-sudo apt update
-
-sudo apt upgrade
+```bash
+python3 -m unittest discover -s tests -v
+bash -n bootstrap.sh install.sh zellij/install_zellij.sh omarchy/install.sh
+zsh -n conf/zshrc conf/aliases
 ```
 
-```
-sudo apt install -y curl git unzip vim zsh htop tree linux-headers-generic linux-headers-$(uname -r)
-```
-
-### ZSH
-
-```
-sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-```
-
-### Installation file
-```
-zsh install.sh
-
-zsh git_setup.sh
-```
-```
-exec zsh
-```
-
-### Ruby
-
-The `install.sh` should've installed `rbenv`, check if installed with `rbenv -v`.   
-
-Run this, which should take a while, around **10 mins**.
-```
-rbenv install 3.3.5
-```
-Set this as the global version:
-```
-rbenv global 3.3.5
-```
-```
-exec zsh
-```
-
-Check if successful installed `ruby -v`
-
-Update bundler:
-```
-gem update bundler
-```
-Install some gems:
-```
-gem install http pry-byebug rake rails:7.1.3.4 rspec sqlite3:1.7.3 activerecord:7.1.3.2 ruby-lsp
-```
-
-### Nodejs
-```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | zsh
-```
-```
-exec zsh
-```
-
-Check if successful installed with `nvm -v`, then run:
-```
-nvm install 20.17.0
-```
-Check if successful installed `node -v`. Run:
-```
-nvm cache clear
-```
-
-### Install DBs
-```
-sudo apt install -y postgresql postgresql-contrib libpq-dev build-essential
-```
-Create role:
-```
-sudo -u postgres psql --command "CREATE ROLE \"`whoami`\" LOGIN createdb superuser;"
-```
-```
-exec zsh
-```
-
-### Install tlp
-It improves battery life:
-```
-sudo add-apt-repository ppa:linrunner/tlp
-
-sudo apt-get install tlp tlp-rdw 
-```
+The tests use isolated homes and mocked system commands; they do not install
+packages or change the developer’s login shell. Real Linux/Pacman package
+installation still needs a smoke test on the target machine.
 
 ## Origin
+
 This repository is based on [Le Wagon's](https://www.lewagon.com) dotfiles.

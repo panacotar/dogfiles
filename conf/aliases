@@ -33,15 +33,16 @@ alias hid='f(){ curl "https://hashes.com/en/api/identifier?hash=$1";  unset -f f
 # Might need to install wget:> (mac) brew install wget
 alias downdir='wget -r --no-parent'
 
-# Emulate the pbcopy & pbpaste from Mac
-alias pbcopy='xclip -selection clipboard'
-alias pbpaste='xclip -selection clipboard -o'
-
-alias xclip='xclip -sel c'
+# Keep native macOS clipboard commands; use X11 helpers only when available.
+if [[ "$(uname -s)" == Linux && -n ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]] && command -v xclip >/dev/null 2>&1; then
+  alias pbcopy='xclip -selection clipboard'
+  alias pbpaste='xclip -selection clipboard -o'
+  alias xclip='xclip -sel c'
+fi
 
 ###### Git
 # Pulls from the develop branch
-unalias gpd
+unalias gpd 2>/dev/null
 alias gpod='git pull origin develop'
 
 # Creates an empty commit
