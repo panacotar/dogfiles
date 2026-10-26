@@ -104,7 +104,7 @@ bash ~/code/darius/dogfiles/install.sh
 ```
 
 The initial checkbox menu offers Ruby tooling (rbenv/ruby-build), Go, Python tooling
-(pyenv/pyenv-virtualenv), Node tooling (nvm), security tools, DBeaver, Zellij, and
+(pyenv/pyenv-virtualenv), Node tooling (nvm), security tools, DBeaver, and
 platform-specific development apps, services, and desktop/hardware settings.
 All choices start unchecked. Enter numbers such as `1 3 6` (or `1,3,6`) to toggle
 items, `a` to select all, `n` to clear all, or `q` to cancel. Press Enter to start
@@ -203,7 +203,7 @@ packages, apply themes, reload services, commit, or push.
 
 ```bash
 python3 -m unittest discover -s tests -v
-bash -n bootstrap.sh install.sh conf/macos zellij/install_zellij.sh omarchy/install.sh
+bash -n bootstrap.sh install.sh conf/macos omarchy/install.sh
 zsh -n conf/zshrc conf/aliases
 ```
 

@@ -515,7 +515,7 @@ setup_login_shell
         result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
                                  tty_input='2 nope\nq\n')
         self.assert_success(result)
-        self.assertIn('Choose numbers between 1 and 9', result.stdout)
+        self.assertIn('Choose numbers between 1 and 8', result.stdout)
         self.assertNotIn('[x]  2. Go', result.stdout)
         self.assertIn('Selection cancelled.', result.stdout)
         self.assertEqual(snapshot(self.home), before)

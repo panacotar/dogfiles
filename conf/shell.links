@@ -8,4 +8,3 @@ alacritty.toml|config|alacritty/alacritty.toml
 # Preserve the historical location as well as the current XDG location.
 alacritty.toml|home|.alacritty.toml
 alacritty-theme-default.toml|home|.alacritty-theme-default.toml
-zellij/config.kdl|config|zellij-me/config.kdl

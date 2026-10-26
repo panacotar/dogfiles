@@ -288,7 +288,7 @@ link_configs() {
     if [[ "$platform" == omarchy ]]; then
       say 'Would run bash omarchy/install.sh --dry-run (monitor settings skipped unless --include-monitors).'
     else
-      say 'Would link Zsh, aliases, custom commands, Ruby tool configs, Zellij and Alacritty configs.'
+      say 'Would link Zsh, aliases, custom commands, Ruby tool configs and Alacritty configs.'
     fi
     say "Would back up conflicting files/links under $state_root/dogfiles/backups/."
     return

@@ -9,7 +9,7 @@ if [[ ${1:-} == --help || ${1:-} == -h ]]; then
 Usage: bash install.sh
 
 Optional post-installation for macOS and Debian/Mint after bootstrap.sh.
-Select Ruby/Go/Python/Node tooling, security tools, DBeaver, Zellij,
+Select Ruby/Go/Python/Node tooling, security tools, DBeaver,
 applications, and desktop/hardware extras in the initial checkbox menu.
 Enter option numbers to toggle choices; press Enter to install the selection.
 All choices start unchecked. Use a for all, n for none, or q to cancel.
@@ -40,7 +40,7 @@ progress_comm() { printf '\n-----> %s\n' "$1"; }
 # A numbered checkbox menu works with macOS's Bash 3.2 and needs no extra tools.
 # Collect every choice before running package managers, downloads, or settings.
 collect_choices() {
-  option_ids=(ruby go python node sec dbeaver zellij)
+  option_ids=(ruby go python node sec dbeaver)
   option_labels=(
     'Ruby tooling (rbenv and ruby-build)'
     'Go'
@@ -48,7 +48,6 @@ collect_choices() {
     'Node tooling (nvm; choose a Node version afterward)'
     'Security tools'
     'DBeaver'
-    'Zellij'
   )
   if [[ "$os" == macos ]]; then
     option_ids+=(dev_apps stripme)
@@ -248,11 +247,6 @@ if selected dbeaver; then
     packages dbeaver-ce
     rm -rf -- "$tmp_dir"; tmp_dir=
   fi
-fi
-if selected zellij; then
-  trumpet 'Installing Zellij...'
-  if [[ "$os" == macos ]]; then packages zellij; else bash "$script_dir/zellij/install_zellij.sh"; fi
-  echo 'Zellij uses the config linked by bootstrap.sh under the XDG config directory.'
 fi
 if [[ "$os" == macos ]]; then
   if selected dev_apps; then
