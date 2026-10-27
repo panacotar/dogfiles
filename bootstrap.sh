@@ -399,6 +399,10 @@ collect_links() {
         config) target="$config_root/$relative" ;;
         *) die "Unknown destination type: $kind" ;;
       esac
+      # Only Omarchy needs a wrapper to select bootstrap's plugin directory.
+      if [[ "$platform" == omarchy && "$kind" == config && "$relative" == tmux/tmux.conf && "$source" == tmux.conf ]]; then
+        source=tmux-omarchy.conf
+      fi
       [[ -f "$repo_dir/conf/$source" && ! -L "$repo_dir/conf/$source" ]] || die "Missing regular config: $source"
       [[ ! -d "$target" || -L "$target" ]] || die "Expected a file, found directory: $target"
       parent=$(dirname "$target")
@@ -538,12 +542,17 @@ setup_tmux_shell() {
   trumpet 'Updating the tmux shell...'
   if "$dry_run"; then
     say 'Would set Zsh as the default shell and SHELL for new panes in the active/default tmux server, if running.'
+    if [[ "$platform" == omarchy ]]; then say 'Would reload the Omarchy tmux wrapper to activate installed plugins in that server.'; fi
     return
   fi
   # has-session only inspects an existing server; never start one during setup.
   if ! tmux has-session 2>/dev/null; then
     say 'No running tmux sessions to update; new servers will use the linked config.'
     return
+  fi
+  if [[ "$platform" == omarchy ]]; then
+    # The wrapper selects the installed plugin directory before TPM is loaded.
+    tmux source-file "$config_root/tmux/tmux.conf"
   fi
   local zsh_bin
   zsh_bin=$(command -v zsh)

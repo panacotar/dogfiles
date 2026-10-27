@@ -77,6 +77,7 @@ bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
 
 - Keep the checkout in place: installed links point into it, and edits through them change the repo.
 - Conflicts are backed up under `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`. Restore a file by removing its link and moving its backup back.
+- On Omarchy, the XDG tmux config is a wrapper that selects bootstrap’s `~/.tmux/plugins/` directory before loading your personal config. Existing tmux servers are reloaded by the full Omarchy bootstrap. Other platforms use the shared config directly.
 - Tmux config is linked at both `~/.tmux.conf` and `${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf` so existing XDG settings cannot override it.
 - Configs use `${XDG_CONFIG_HOME:-$HOME/.config}`; XDG paths must be absolute.
 - Dry-run makes no changes. Without a checkout, file-level checks remain pending.

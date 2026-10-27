@@ -490,8 +490,8 @@ setup_login_shell
         self.assertEqual((self.home / '.aliases').readlink(), repo / 'conf/aliases')
         self.assertFalse((config / 'hypr/monitors.lua').exists())
         self.assertEqual((config / 'alacritty/alacritty.toml').readlink(), repo / 'conf/alacritty.toml')
-        for target in (self.home / '.tmux.conf', config / 'tmux/tmux.conf'):
-            self.assertEqual(target.readlink(), repo / 'conf/tmux.conf')
+        self.assertEqual((self.home / '.tmux.conf').readlink(), repo / 'conf/tmux.conf')
+        self.assertEqual((config / 'tmux/tmux.conf').readlink(), repo / 'conf/tmux-omarchy.conf')
         saved = next((self.home / '.local/state/dogfiles/backups').glob('bootstrap-*'))
         self.assertEqual((saved / str(self.home).lstrip('/') / '.zshrc').read_text(), 'keep zsh')
         self.assertEqual((saved / str(config).lstrip('/') / 'tmux/tmux.conf').read_text(), 'old tmux')
@@ -527,16 +527,30 @@ setup_login_shell
         calls = self.calls()
         self.assertIn(['tmux', ['set-option', '-g', 'default-shell', str(self.bin / 'zsh')]], calls)
         self.assertIn(['tmux', ['set-environment', '-g', 'SHELL', str(self.bin / 'zsh')]], calls)
+        self.assertIn(['tmux', ['source-file', str(self.home / '.config/tmux/tmux.conf')]], calls)
         self.assertFalse(any(name == 'chsh' for name, _ in calls))
         self.assertFalse(any(name == 'tmux' and args[0] in ('send-keys', 'kill-server', 'new-session')
                              for name, args in calls))
+
+    def test_other_platforms_use_shared_tmux_config_without_reloading_server(self):
+        repo = self.checkout()
+        for platform in ('macos', 'debian'):
+            with self.subTest(platform=platform):
+                self.assert_success(self.run_script(LIBRARY + '\nplatform=' + platform +
+                    '; repo_dir="$CHECKOUT"; config_root="$HOME/.config"; state_root="$HOME/.local/state"; '
+                    'dry_run=false; include_monitors=false; link_configs\n', env={'CHECKOUT': str(repo)}))
+                self.assertEqual((self.home / '.config/tmux/tmux.conf').readlink(), repo / 'conf/tmux.conf')
+                self.audit.unlink(missing_ok=True)
+                self.assert_success(self.run_script(LIBRARY + '\nplatform=' + platform +
+                    '; dry_run=false; setup_tmux_shell\n', env={'MOCK_TMUX_RUNNING': '1'}))
+                self.assertFalse(any(name == 'tmux' and args[0] == 'source-file' for name, args in self.calls()))
 
     def test_tmux_shell_setup_without_server_or_dry_run_does_not_mutate(self):
         code = LIBRARY + '\ndry_run=false; setup_tmux_shell\n'
         self.assert_success(self.run_script(code))
         self.assertEqual([args for name, args in self.calls() if name == 'tmux'], [['has-session']])
         self.audit.unlink()
-        self.assert_success(self.run_script(LIBRARY + '\ndry_run=true; setup_tmux_shell\n',
+        self.assert_success(self.run_script(LIBRARY + '\nplatform=omarchy; dry_run=true; setup_tmux_shell\n',
                                             env={'MOCK_TMUX_RUNNING': '1'}))
         self.assertFalse(any(name == 'tmux' for name, _ in self.calls()))
 
