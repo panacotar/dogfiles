@@ -358,7 +358,7 @@ class BootstrapTest(unittest.TestCase):
         cache = ssh / ('environment-' + host)
         cache.write_text('export SSH_AUTH_SOCK=/tmp/stale-agent\n')
         code = LIBRARY + '\nplatform=omarchy; dry_run=false; setup_ssh\n'
-        self.assert_success(self.run_script(code, tty=True))
+        self.assert_success(self.run_script(code, tty=True, env={'MOCK_AGENT_STATUS': '2'}))
         self.assertIn(['ssh-agent', ['-s']], self.calls())
         self.assertIn('/tmp/mock-dogfiles-agent', cache.read_text())
 
@@ -996,11 +996,13 @@ install_packages
             (self.home / ('.' + name)).symlink_to(self.template / 'conf' / name)
         self.env['ZDOTDIR'] = str(self.home)
         self.env['SHELL'] = '/bin/bash'
-        result = subprocess.run([shutil.which('zsh'), '-ic', 'print -r -- "$path[1]"; print -r -- "SHELL=$SHELL"; alias ll'],
+        result = subprocess.run([shutil.which('zsh'), '-ic', 'print -r -- "$path[1]"; print -r -- "SHELL=$SHELL"; alias ll; '
+                                 'zstyle -a :omz:plugins:ssh-agent identities ids; print -r -- "SSH_KEY=$ids[1]"'],
                                 env=self.env, text=True, capture_output=True)
         self.assert_success(result)
         self.assertIn('SHELL=' + str(self.bin / 'zsh'), result.stdout)
         self.assertIn("ll='ls -alh'", result.stdout)
+        self.assertIn('SSH_KEY=github_id_ed25519', result.stdout)
         self.assertNotIn('no such file', result.stderr)
         self.assertNotIn('not found', result.stderr)
 
