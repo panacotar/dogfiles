@@ -47,16 +47,18 @@ For csvlens, bootstrap uses Homebrew on macOS and Pacman on Omarchy. On Debian-f
 systems it preserves an existing command, then prefers APT when available; otherwise
 it installs the pinned v0.15.1 binary with SHA-256 verification (x86_64 musl or ARM64 GNU).
 Oh My Zsh automatic updates are disabled; update pins deliberately after reviewing
-upstream changes. Existing source checkouts and edits are preserved, with warnings
-when their revisions differ. To adopt a new pin, move the old checkout aside and
+upstream changes. Existing source checkouts and edits are preserved. A warning is
+printed when `HEAD` differs from the configured pin; local edits alone produce no warning.
+To adopt a new pin, move the old checkout aside and
 rerun bootstrap (or select the corresponding optional installer task).
 Install tmux plugins through bootstrap; TPM shortcuts do not resolve commit pins.
 Homebrew/APT/Pacman continue to manage their own packages and updates.
 
 ### SSH and Git
 
-Bootstrap skips SSH setup if `~/.ssh/github_id_ed25519` exists. Otherwise, it creates
-the key and prints its public part. Register it in [GitHub SSH keys](https://github.com/settings/ssh/new)
+Bootstrap preserves an existing `~/.ssh/github_id_ed25519` key and SSH configuration.
+It reuses or starts an SSH agent and loads the key when needed. If the key is missing,
+bootstrap generates it and prints its public part. Register it in [GitHub SSH keys](https://github.com/settings/ssh/new)
 as an authentication key, and as a signing key if using Git signing.
 
 ```bash
@@ -126,9 +128,7 @@ bootstrap dry-runs create none. Running `conf/macos` directly only prints to the
 terminal; run it through `install.sh` to capture its output in the installation log.
 
 **On macOS, continuing also applies all settings in [conf/macos](conf/macos), even with no optional packages selected.**
-That file contains only your confirmed personal customizations: currently,
-`ApplePressAndHoldEnabled=false` from the original installer. Add your own settings
-there; inherited third-party defaults are excluded. To reapply it alone:
+Review and edit that file for the current macOS settings. To reapply it alone:
 
 ```bash
 bash ~/code/darius/dogfiles/conf/macos
@@ -154,6 +154,8 @@ hyprctl configerrors
 - See the [restore guide](omarchy/RESTORE.md) for version requirements, themes, and undo steps.
 
 ## Development checks
+
+Run the tests and syntax checks manually:
 
 ```bash
 python3 -m unittest discover -s tests -v
