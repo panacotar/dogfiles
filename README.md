@@ -125,7 +125,9 @@ bash ~/code/darius/dogfiles/conf/macos
 ## Omarchy desktop
 
 Bootstrap applies these settings automatically, skipping destinations managed by personal
-`conf/` manifests so personal settings always win. For desktop configs only:
+`conf/` manifests so personal settings always win. The standalone Omarchy installer
+enforces the same exclusions; it never replaces destinations managed by the personal
+manifests. Use bootstrap to install the personal links. For desktop configs only:
 
 ```bash
 cd ~/code/darius/dogfiles

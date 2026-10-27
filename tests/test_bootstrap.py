@@ -554,6 +554,33 @@ setup_login_shell
                                             env={'MOCK_TMUX_RUNNING': '1'}))
         self.assertFalse(any(name == 'tmux' for name, _ in self.calls()))
 
+    def test_standalone_omarchy_installer_preserves_personal_destinations(self):
+        config = self.home / 'custom config'
+        (config / 'alacritty').mkdir(parents=True)
+        personal = self.template / 'conf/alacritty.toml'
+        (config / 'alacritty/alacritty.toml').symlink_to(personal)
+        # Home mappings into XDG config must have the same precedence.
+        (config / 'foot').mkdir()
+        (config / 'foot/foot.ini').write_text('personal foot settings')
+        with (self.template / 'conf/common.links').open('a') as manifest:
+            manifest.write('vimrc|home|custom config/foot/foot.ini\n')
+        self.env['XDG_CONFIG_HOME'] = str(config)
+        command = 'bash "$TEMPLATE/omarchy/install.sh"'
+        before = snapshot(self.home)
+        preview = self.run_script(command + ' --dry-run')
+        self.assert_success(preview)
+        self.assertIn('Skip config overridden by personal settings: alacritty/alacritty.toml', preview.stdout)
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_success(self.run_script(command))
+        self.assertEqual((config / 'alacritty/alacritty.toml').readlink(), personal)
+        self.assertEqual((config / 'foot/foot.ini').read_text(), 'personal foot settings')
+        self.assertTrue((config / 'hypr/hyprland.lua').is_symlink())
+        self.assertFalse((self.home / '.local/state/dogfiles/backups').exists())
+        before = snapshot(self.home)
+        self.assert_success(self.run_script(command))
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_no_mutations()
+
     def test_omarchy_exclusions_skip_sources_and_are_repeatable(self):
         # Exclusions are processed before validating source files.
         for relative in ('alacritty/alacritty.toml', 'kitty/kitty.conf'):

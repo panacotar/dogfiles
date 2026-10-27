@@ -13,6 +13,10 @@ configuration. Review compatibility when restoring onto a different Omarchy
 version. Omarchy updates or refresh commands may replace linked files: check
 `git diff` and rerun the installer if a link is replaced.
 
+Personal destinations declared in `conf/common.links` and `conf/shell.links` always
+take priority, including when running `omarchy/install.sh` directly. The desktop
+installer skips those destinations; bootstrap installs the personal links.
+
 Apply the theme manually after installation:
 
 ```bash

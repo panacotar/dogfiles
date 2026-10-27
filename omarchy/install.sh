@@ -9,6 +9,8 @@ Usage: bash omarchy/install.sh [--dry-run] [--include-monitors] [--exclude-confi
 Link Omarchy settings into ${XDG_CONFIG_HOME:-$HOME/.config}.
 Existing files and conflicting links are preserved in a unique directory under
 ${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/.
+Destinations declared in conf/common.links and conf/shell.links always take priority.
+Use bootstrap.sh to install those personal links.
 Monitor settings are skipped unless --include-monitors is supplied.
 --exclude-config skips a config destination (repeatable; used by bootstrap for personal overrides).
 --dry-run prints changes without creating directories, backups, or links.
@@ -43,6 +45,28 @@ if [[ "$config_root" != /* || "$state_root" != /* ]]; then
   printf 'Configuration and state paths must be absolute.\n' >&2
   exit 1
 fi
+
+# Enforce personal precedence even when this installer is run without bootstrap.
+# Compare destination paths, including home mappings inside XDG_CONFIG_HOME.
+for manifest in common shell; do
+  manifest_file="$script_dir/../conf/$manifest.links"
+  [[ -f "$manifest_file" ]] || { printf 'Missing personal manifest: %s\n' "$manifest_file" >&2; exit 1; }
+  while IFS='|' read -r personal_source kind personal_relative extra || [[ -n "$personal_source" ]]; do
+    [[ -z "$personal_source" || "$personal_source" == \#* ]] && continue
+    if [[ -n "$extra" || -z "$personal_relative" || "$personal_relative" == /* || "/$personal_relative/" == */../* ]]; then
+      printf 'Invalid personal link entry in %s\n' "$manifest_file" >&2
+      exit 1
+    fi
+    case "$kind" in
+      home) personal_target="$HOME/$personal_relative" ;;
+      config) personal_target="$config_root/$personal_relative" ;;
+      *) printf 'Unknown personal destination type: %s\n' "$kind" >&2; exit 1 ;;
+    esac
+    if [[ "$personal_target" == "$config_root/"* ]]; then
+      excluded_configs+=("${personal_target#"$config_root/"}")
+    fi
+  done < "$manifest_file"
+done
 
 files=()
 while IFS= read -r relative || [[ -n "$relative" ]]; do
