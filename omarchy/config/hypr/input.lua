@@ -56,5 +56,5 @@
 -- hl.gesture({ fingers = 3, direction = "left", action = function() hl.dispatch(hl.dsp.focus({ direction = "l" })) end })
 -- hl.gesture({ fingers = 3, direction = "right", action = function() hl.dispatch(hl.dsp.focus({ direction = "r" })) end })
 
--- Use macOS-style natural scrolling on the touchpad.
-hl.config({ input = { touchpad = { natural_scroll = true } } })
+-- Use macOS-style natural scrolling on both the mouse and touchpad.
+hl.config({ input = { natural_scroll = true, touchpad = { natural_scroll = true } } })
