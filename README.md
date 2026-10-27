@@ -106,6 +106,13 @@ On macOS/Debian, choose runtimes, security tools, DBeaver, development apps, and
 - `n` clears all optional selections and continues immediately, without redrawing.
 - Pick language versions afterward with rbenv, pyenv, or nvm.
 
+On Debian/Ubuntu/Mint, the security-tools option clones SecLists into
+`~/code/misc/SecLists` at a fixed commit. WPScan uses a pinned Ruby installed by
+rbenv under `~/.rbenv`, with a launcher at `~/.local/bin/wpscan`. Ruby builds and
+gem installation run as your normal user; only system dependencies use sudo.
+This can take several minutes to compile Ruby. Your global/project Ruby selection
+is preserved. Ruby and WPScan versions are maintained in `scripts/sources.sh`.
+
 Each `install.sh` run saves its output and errors in a unique
 `logs/install-YYYYMMDD-HHMMSS-XXXXXX/output.log` under the checkout, while keeping
 output visible in the terminal. Failures print `fix the reported issue and rerun.

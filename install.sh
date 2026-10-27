@@ -265,14 +265,20 @@ if [[ "$os" == debian ]]; then
   root apt-get update
 fi
 
+install_debian_ruby_tooling() {
+  if [[ ${ruby_tooling_ready:-false} == true ]]; then return; fi
+  packages build-essential tk-dev zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
+  clone_pinned https://github.com/rbenv/rbenv.git "$HOME/.rbenv" "$RBENV_REVISION"
+  clone_pinned https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build" "$RUBY_BUILD_REVISION"
+  ruby_tooling_ready=true
+}
+
 if selected ruby; then
   trumpet 'Installing Ruby tooling (rbenv and ruby-build)...'
   if [[ "$os" == macos ]]; then
     packages rbenv ruby-build libyaml
   else
-    packages build-essential tk-dev zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
-    clone_pinned https://github.com/rbenv/rbenv.git "$HOME/.rbenv" "$RBENV_REVISION"
-    clone_pinned https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build" "$RUBY_BUILD_REVISION"
+    install_debian_ruby_tooling
   fi
   echo 'Choose the Ruby version for your projects with: rbenv install VERSION'
 fi
@@ -306,8 +312,27 @@ if selected sec; then
   if [[ "$os" == macos ]]; then
     packages nmap nikto wpscan
   else
-    packages nmap cewl crunch wfuzz seclists hashcat python3-impacket ruby-dev
-    root gem install wpscan --version "$WPSCAN_VERSION"
+    packages nmap cewl crunch wfuzz hashcat python3-impacket
+    clone_pinned https://github.com/danielmiessler/SecLists.git "$HOME/code/misc/SecLists" "$SECLISTS_REVISION"
+    install_debian_ruby_tooling
+    # Select this runtime explicitly; sudo would use the older system Ruby.
+    # Keep gems isolated from inherited GEM_HOME/GEM_PATH and other Ruby versions.
+    rbenv_bin="$HOME/.rbenv/bin/rbenv"
+    env -u GEM_HOME -u GEM_PATH RBENV_ROOT="$HOME/.rbenv" RBENV_VERSION="$WPSCAN_RUBY_VERSION" \
+      "$rbenv_bin" install -s "$WPSCAN_RUBY_VERSION"
+    env -u GEM_HOME -u GEM_PATH RBENV_ROOT="$HOME/.rbenv" RBENV_VERSION="$WPSCAN_RUBY_VERSION" \
+      "$rbenv_bin" exec gem install wpscan --version "$WPSCAN_VERSION" --no-document
+    # A dedicated launcher also works when the user's project selects another Ruby.
+    mkdir -p "$HOME/.local/bin"
+    if [[ -e "$HOME/.local/bin/wpscan" || -L "$HOME/.local/bin/wpscan" ]]; then
+      mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups"
+      wpscan_backup=$(mktemp -d "${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/wpscan-XXXXXX")
+      mv "$HOME/.local/bin/wpscan" "$wpscan_backup/wpscan"
+      printf 'Backed up WPScan launcher: %s/wpscan\n' "$wpscan_backup"
+    fi
+    printf '#!/usr/bin/env bash\nexec env -u GEM_HOME -u GEM_PATH RBENV_ROOT=%q RBENV_VERSION=%q %q exec wpscan "$@"\n' \
+      "$HOME/.rbenv" "$WPSCAN_RUBY_VERSION" "$rbenv_bin" > "$HOME/.local/bin/wpscan"
+    chmod 755 "$HOME/.local/bin/wpscan"
     clone_pinned https://github.com/sullo/nikto.git "$HOME/code/misc/nikto" "$NIKTO_REVISION"
     command -v go >/dev/null 2>&1 || packages golang-go
     go install "github.com/OJ/gobuster/v3@$GOBUSTER_VERSION"

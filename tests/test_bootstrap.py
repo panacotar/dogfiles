@@ -81,6 +81,9 @@ printf 'true\\n' > "$ZSH/oh-my-zsh.sh"
             elif 'alacritty' in url:
                 (dest / 'extra').mkdir(exist_ok=True)
                 (dest / 'extra/alacritty.info').write_text('mock terminfo')
+            elif 'rbenv/rbenv' in url:
+                (dest / 'bin').mkdir(exist_ok=True)
+                (dest / 'bin/rbenv').symlink_to(bin_dir / 'dispatcher')
     elif args[0] == 'clone':
         dest = pathlib.Path(args[-1])
         if 'panacotar/dogfiles' in args[-2]:
@@ -116,6 +119,17 @@ elif name == 'ssh-add':
     loaded.touch()
 elif name == 'ssh-agent':
     print('export SSH_AUTH_SOCK=/tmp/mock-dogfiles-agent;')
+elif name == 'rbenv':
+    assert os.environ['RBENV_ROOT'] == str(home / '.rbenv')
+    assert os.environ['RBENV_VERSION'] == '3.4.12'
+    assert 'GEM_HOME' not in os.environ and 'GEM_PATH' not in os.environ
+    assert args in (['install', '-s', '3.4.12'],
+                    ['exec', 'gem', 'install', 'wpscan', '--version', '4.1.0', '--no-document'],
+                    ['exec', 'wpscan', '--version'])
+    if args[:2] == ['exec', 'gem']:
+        sys.exit(subprocess.call([str(bin_dir / 'gem')] + args[2:]))
+    if args[:2] == ['exec', 'wpscan']:
+        print('WPScan with user Ruby ' + os.environ['RBENV_VERSION'])
 elif name == 'dscl':
     print('UserShell: ' + str(bin_dir / 'zsh'))
 elif name == 'getent':
@@ -431,6 +445,30 @@ main --dry-run
         self.assertEqual(saved[0].readlink(), original)
         self.assertEqual(original.read_text(), 'Host private-host\n  User example\n')
 
+    @unittest.skipUnless(shutil.which('ssh'), 'OpenSSH is unavailable')
+    def test_new_key_preserves_existing_github_endpoint_and_other_hosts(self):
+        ssh_dir = self.home / '.ssh'
+        ssh_dir.mkdir()
+        config = ssh_dir / 'config'
+        config.write_text('Host github.com\n  HostName ssh.github.com\n  Port 443\n'
+                          '  ProxyCommand /usr/bin/true\n'
+                          'Host private-host\n  User example\n')
+        self.assert_success(self.run_main(platform='debian', tty=True))
+        for host in ('github.com', 'private-host'):
+            result = subprocess.run([shutil.which('ssh'), '-G', '-F', str(config), host],
+                                    text=True, capture_output=True)
+            self.assert_success(result)
+            settings = dict(line.split(' ', 1) for line in result.stdout.splitlines())
+            if host == 'github.com':
+                self.assertEqual(settings['hostname'], 'ssh.github.com')
+                self.assertEqual(settings['port'], '443')
+                self.assertEqual(settings['proxycommand'], '/usr/bin/true')
+                self.assertEqual(settings['user'], 'git')
+                self.assertIn('github_id_ed25519', settings['identityfile'])
+            else:
+                self.assertEqual(settings['user'], 'example')
+                self.assertNotIn('github_id_ed25519', result.stdout)
+
     def test_installed_debian_packages_are_not_upgraded(self):
         code = LIBRARY + '\nplatform=debian; dry_run=false; install_packages\n'
         self.assert_success(self.run_script(code, tty=True, env={'MOCK_PACKAGES_INSTALLED': '1'}))
@@ -703,12 +741,45 @@ install_packages
         calls = self.calls()
         self.assertTrue((self.home / '.nvm/nvm.sh').exists())
         fetches = [args for name, args in calls if name == 'git' and 'fetch' in args]
-        self.assertEqual(len(fetches), 7)
+        self.assertEqual(len(fetches), 8)
         for args in fetches:
             self.assertRegex(args[-1], r'^[0-9a-f]{40}$')
         self.assertIn(['go', ['install', 'github.com/OJ/gobuster/v3@v3.8.2']], calls)
-        self.assertIn(['gem', ['install', 'wpscan', '--version', '4.1.0']], calls)
+        self.assertIn(['gem', ['install', 'wpscan', '--version', '4.1.0', '--no-document']], calls)
         self.assertFalse(any(name == 'curl' for name, _ in calls))
+
+    def test_security_tools_alone_use_user_ruby_and_pinned_seclists(self):
+        self.prepare_linux_post_installer()
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True,
+                                 tty_input='5\n\n',
+                                 env={'GEM_HOME': '/unrelated/gems', 'GEM_PATH': '/unrelated/path'})
+        self.assert_success(result)
+        calls = self.calls()
+        self.assertFalse(any(name == 'sudo' and args[:1] == ['gem'] for name, args in calls))
+        apt_installs = [args for name, args in calls if name == 'apt-get' and args[:1] == ['install']]
+        self.assertFalse(any('seclists' in args or 'ruby-dev' in args for args in apt_installs))
+        self.assertTrue(any('build-essential' in args and 'libyaml-dev' in args for args in apt_installs))
+        seclists = self.home / 'code/misc/SecLists'
+        self.assertEqual((seclists / '.mock-revision').read_text(),
+                         '758fecf4925900dd1bd0a3cba39551d6b4f2da8c')
+        launcher = self.home / '.local/bin/wpscan'
+        self.assertTrue(os.access(launcher, os.X_OK))
+        launched = self.run_script('"$HOME/.local/bin/wpscan" --version',
+                                   env={'RBENV_VERSION': 'system', 'RBENV_ROOT': '/unrelated',
+                                        'GEM_HOME': '/unrelated/gems', 'GEM_PATH': '/unrelated/path'})
+        self.assert_success(launched)
+        self.assertIn('WPScan with user Ruby 3.4.12', launched.stdout)
+
+    def test_security_tools_preserve_existing_wpscan_launcher(self):
+        self.prepare_linux_post_installer()
+        launcher = self.home / '.local/bin/wpscan'
+        launcher.parent.mkdir(parents=True)
+        launcher.write_text('existing launcher')
+        result = self.run_script('bash "$TEMPLATE/install.sh"', tty=True, tty_input='5\n\n')
+        self.assert_success(result)
+        backups = list((self.home / '.local/state/dogfiles/backups').glob('wpscan-*/wpscan'))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text(), 'existing launcher')
 
     def test_existing_nvm_is_preserved_and_reports_pin_mismatch(self):
         nvm = self.home / '.nvm'

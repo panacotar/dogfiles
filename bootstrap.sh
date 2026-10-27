@@ -349,7 +349,9 @@ setup_ssh() {
   # remains intact below it. Keep an existing symlink's target intact as well.
   temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
   {
-    printf 'Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/github_id_ed25519\n  AddKeysToAgent yes\n'
+    # Leave HostName unset so existing alternate endpoints (e.g. SSH over 443)
+    # retain their hostname as well as their port and proxy configuration.
+    printf 'Host github.com\n  User git\n  IdentityFile ~/.ssh/github_id_ed25519\n  AddKeysToAgent yes\n'
     if [[ "$platform" == macos ]]; then printf '  UseKeychain yes\n'; fi
     printf '\nHost *\n'
     if [[ -f "$config" ]]; then cat "$config"; fi
