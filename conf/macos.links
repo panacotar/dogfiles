@@ -1,0 +1,2 @@
+# Bootstrap links this file; install.sh applies all its settings on macOS.
+macos|home|.macos

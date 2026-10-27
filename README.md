@@ -1,102 +1,168 @@
-## Toolset
+## Set up a new machine
 
-- [oh-my-zsh](http://ohmyz.sh/)
-- [git](https://git-scm.com/)
-- Ruby via [`rbenv`](https://github.com/rbenv/rbenv)
-
-
-### Change to nearby update servers
-From the Software Sources app.
-
-```
-sudo apt update
-
-sudo apt upgrade
+```bash
+curl -fsSL https://raw.githubusercontent.com/panacotar/dogfiles/master/bootstrap.sh | bash
 ```
 
-```
-sudo apt install -y curl git unzip vim zsh htop tree linux-headers-generic linux-headers-$(uname -r)
+Preview without making changes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/panacotar/dogfiles/master/bootstrap.sh | bash -s -- --dry-run
 ```
 
-### ZSH
+Run as your normal user in an interactive terminal. The URLs require the script on `master`.
+Missing curl on Debian/Mint? Run first:
 
-```
-sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-```
-
-### Installation file
-```
-zsh install.sh
-
-zsh git_setup.sh
-```
-```
-exec zsh
+```bash
+sudo apt-get update && sudo apt-get install -y curl ca-certificates
 ```
 
-### Ruby
+### What it sets up
 
-The `install.sh` should've installed `rbenv`, check if installed with `rbenv -v`.   
+- Supports macOS, Debian/Ubuntu/Linux Mint, and already-installed Omarchy.
+- Clones to `~/code/darius/dogfiles`; preserves existing checkouts and local edits.
+- Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, csvlens, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
+- On all supported platforms, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
+- Loads the GitHub SSH key into a shared agent, including on reruns with an existing key. Zsh reuses that agent and loads missing keys on terminal startup; encrypted keys need unlocking once per agent session.
+- Installs TPM and tmux plugins; links configs with backups and safe reruns.
+- On Omarchy, applies desktop/terminal configs with personal `conf/` configs taking priority.
 
-Run this, which should take a while, around **10 mins**.
-```
-rbenv install 3.3.5
-```
-Set this as the global version:
-```
-rbenv global 3.3.5
-```
-```
-exec zsh
-```
+If macOS opens the command-line tools installer, finish it and rerun bootstrap.
+Bootstrap updates the active/default tmux server so new panes and windows use Zsh.
+Already-open shells keep running; bootstrap prints the command to switch the current shell.
+Log out of the desktop and back in to refresh its inherited shell environment. Options: `bash ~/code/darius/dogfiles/bootstrap.sh --help`.
+Both installers share announcement formatting in `scripts/output.sh`; the
+standalone bootstrap uses plain-text announcements until the checkout is available.
 
-Check if successful installed `ruby -v`
+### Security and source updates
 
-Update bundler:
-```
-gem update bundler
-```
-Install some gems:
-```
-gem install http pry-byebug rake rails:7.1.3.4 rspec sqlite3:1.7.3 activerecord:7.1.3.2 ruby-lsp
-```
+Zsh excludes relative directories from `PATH` and checks completion permissions.
+Use `npm exec` or an explicit `./bin/COMMAND` for project tools. Alacritty allows
+OSC52 clipboard writes, but blocks clipboard reads by terminal applications.
 
-### Nodejs
-```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | zsh
-```
-```
-exec zsh
-```
+Code installed outside native package managers uses fixed commits in
+`scripts/sources.sh` and `conf/tmux.conf`. The standalone bootstrap keeps its
+Homebrew installer pin/checksum and Lazygit/csvlens versions/checksums near its package lists.
+For csvlens, bootstrap uses Homebrew on macOS and Pacman on Omarchy. On Debian-family
+systems it preserves an existing command, then prefers APT when available; otherwise
+it installs the pinned v0.15.1 binary with SHA-256 verification (x86_64 musl or ARM64 GNU).
+Oh My Zsh automatic updates are disabled; update pins deliberately after reviewing
+upstream changes. Existing source checkouts and edits are preserved. A warning is
+printed when `HEAD` differs from the configured pin; local edits alone produce no warning.
+To adopt a new pin, move the old checkout aside and
+rerun bootstrap (or select the corresponding optional installer task).
+Install tmux plugins through bootstrap; TPM shortcuts do not resolve commit pins.
+Homebrew/APT/Pacman continue to manage their own packages and updates.
 
-Check if successful installed with `nvm -v`, then run:
-```
-nvm install 20.17.0
-```
-Check if successful installed `node -v`. Run:
-```
-nvm cache clear
-```
+### SSH and Git
 
-### Install DBs
-```
-sudo apt install -y postgresql postgresql-contrib libpq-dev build-essential
-```
-Create role:
-```
-sudo -u postgres psql --command "CREATE ROLE \"`whoami`\" LOGIN createdb superuser;"
-```
-```
-exec zsh
+Bootstrap preserves an existing `~/.ssh/github_id_ed25519` key and SSH configuration.
+It reuses or starts an SSH agent and loads the key when needed. If the key is missing,
+bootstrap generates it and prints its public part. Register it in [GitHub SSH keys](https://github.com/settings/ssh/new)
+as an authentication key, and as a signing key if using Git signing.
+
+```bash
+ssh -T git@github.com
 ```
 
-### Install tlp
-It improves battery life:
-```
-sudo add-apt-repository ppa:linrunner/tlp
+To change the Git name and email stored in the shared config:
 
-sudo apt-get install tlp tlp-rdw 
+```bash
+bash ~/code/darius/dogfiles/git_setup.sh
 ```
 
-## Origin
-This repository is based on [Le Wagon's](https://www.lewagon.com) dotfiles.
+## Manage configs
+
+Shared files live in `conf/`. Preview or reapply links, including after moving from the old root-level paths:
+
+```bash
+bash ~/code/darius/dogfiles/bootstrap.sh --configs-only --dry-run
+bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
+```
+
+- Keep the checkout in place: installed links point into it, and edits through them change the repo.
+- Conflicts are backed up under `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`. Restore a file by removing its link and moving its backup back.
+- On Omarchy, the XDG tmux config is a wrapper that selects bootstrap’s `~/.tmux/plugins/` directory before loading your personal config. Existing tmux servers are reloaded by the full Omarchy bootstrap. Other platforms use the shared config directly.
+- Tmux config is linked at both `~/.tmux.conf` and `${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf` so existing XDG settings cannot override it.
+- Configs use `${XDG_CONFIG_HOME:-$HOME/.config}`; XDG paths must be absolute.
+- Dry-run makes no changes. Without a checkout, file-level checks remain pending.
+
+To add a config, place it under `conf/` and add a `source|root|destination` mapping:
+
+```text
+tmux.conf|home|.tmux.conf
+```
+
+`home` means `$HOME`; `config` means the XDG config directory. Both `common.links`
+and `shell.links` apply on every supported platform; `macos.links` applies only on macOS.
+Reapply links after updating a manifest.
+Legacy Bash, PulseAudio, redshift, and launcher examples are saved but not automatically applied.
+
+## Optional post-installation
+
+```bash
+bash ~/code/darius/dogfiles/install.sh
+```
+
+On macOS/Debian, choose runtimes, security tools, DBeaver, development apps, and desktop extras:
+
+- Toggle numbered checkboxes with spaces or commas; `a` selects all. The menu updates in place.
+- Press an empty Enter to install the current selection; `q` cancels.
+- `n` clears all optional selections and continues immediately, without redrawing.
+- Pick language versions afterward with rbenv, pyenv, or nvm.
+
+On Debian/Ubuntu/Mint, the security-tools option clones SecLists into
+`~/code/misc/SecLists` at a fixed commit. WPScan uses a pinned Ruby installed by
+rbenv under `~/.rbenv`, with a launcher at `~/.local/bin/wpscan`. Ruby builds and
+gem installation run as your normal user; only system dependencies use sudo.
+This can take several minutes to compile Ruby. Your global/project Ruby selection
+is preserved. Ruby and WPScan versions are maintained in `scripts/sources.sh`.
+The optional Debian Ruby-tooling dependencies include both `tk-dev` and `tklib`;
+they are also installed when selecting security tools for WPScan.
+
+Each `install.sh` run saves its output and errors in a unique
+`logs/install-YYYYMMDD-HHMMSS-XXXXXX/output.log` under the checkout, while keeping
+output visible in the terminal. Failures print `fix the reported issue and rerun.
+Logged in ...` with the full path. Logs are private and gitignored; `--help` and
+bootstrap dry-runs create none. Running `conf/macos` directly only prints to the
+terminal; run it through `install.sh` to capture its output in the installation log.
+
+**On macOS, continuing also applies all settings in [conf/macos](conf/macos), even with no optional packages selected.**
+Review and edit that file for the current macOS settings. To reapply it alone:
+
+```bash
+bash ~/code/darius/dogfiles/conf/macos
+```
+
+## Omarchy desktop
+
+Bootstrap applies these settings automatically, skipping destinations managed by personal
+`conf/` manifests so personal settings always win. The standalone Omarchy installer
+enforces the same exclusions; it never replaces destinations managed by the personal
+manifests. Use bootstrap to install the personal links. For desktop configs only:
+
+```bash
+cd ~/code/darius/dogfiles
+bash omarchy/install.sh --dry-run
+bash omarchy/install.sh
+hyprctl reload
+hyprctl configerrors
+```
+
+- Add `--include-monitors` to restore monitor settings; they are skipped by default.
+- Add new settings under `omarchy/config/` and list them in `omarchy/files.txt`.
+- See the [restore guide](omarchy/RESTORE.md) for version requirements, themes, and undo steps.
+
+## Development checks
+
+Run the tests and syntax checks manually:
+
+```bash
+python3 -m unittest discover -s tests -v
+bash -n bootstrap.sh install.sh scripts/output.sh scripts/sources.sh conf/macos omarchy/install.sh
+zsh -n conf/zshrc conf/aliases
+```
+
+Package installation is mocked; native Linux smoke checks remain manual.
+
+Based on [Le Wagon's dotfiles](https://www.lewagon.com).

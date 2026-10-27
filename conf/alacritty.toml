@@ -17,3 +17,7 @@ option_as_alt = "Both" # MacOs - Option key as ALT
 
 [font]
 size = 13
+
+[terminal]
+# Remote terminal applications may copy text, but cannot read the clipboard.
+osc52 = "OnlyCopy"
