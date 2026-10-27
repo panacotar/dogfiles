@@ -12,9 +12,10 @@
 #     Debian refreshes APT metadata; Omarchy uses its existing Pacman database.
 #  4. Use a pinned, checksum-verified x86_64/ARM64 Lazygit release if APT cannot provide it,
 #     preserve an existing tldr client, and update the tldr cache.
-#  5. Skip SSH setup if ~/.ssh/github_id_ed25519 exists. Otherwise generate it,
+#  5. Reuse ~/.ssh/github_id_ed25519 if present. Otherwise generate it,
 #     back up/configure the GitHub SSH identity, and load the key into an agent
-#     (with Keychain on macOS). Print the public key for manual GitHub registration.
+#     (with Keychain on macOS). Share the agent with future Zsh sessions, and
+#     print new public keys for manual GitHub registration.
 #  6. Create ~/code/darius and clone dogfiles over HTTPS if absent; set only a new
 #     checkout's origin to SSH. Existing checkout remotes are left as they are.
 #  7. On all platforms, install Oh My Zsh while keeping .zshrc, plus autosuggestions
@@ -29,7 +30,8 @@
 #  9. On Omarchy, delegate desktop/terminal config to omarchy/install.sh, giving
 #     personal configs priority, and restore monitor settings only with --include-monitors.
 # 10. On all platforms, validate Zsh startup and make it the login shell; print a
-#     manual command if blocked. Verify installed commands and print next steps.
+#     manual command if blocked. Update any active/default tmux server so future
+#     panes use Zsh. Verify installed commands and print session-switch instructions.
 #
 # --dry-run previews these steps without changes, downloads, logs or prompts.
 # --configs-only only applies config links from a local checkout; both flags can
@@ -287,11 +289,45 @@ install_packages() {
 
 apple_ssh_add() { /usr/bin/ssh-add --apple-use-keychain "$@"; }
 
+load_github_key() {
+  local key=$1 agent_status=0 cache="$HOME/.ssh/environment-$(hostname -s)" cache_temp
+  if "$dry_run"; then
+    say "Would reuse/start an SSH agent and load $key if it is not already loaded."
+    return
+  fi
+  ssh-add -l >/dev/null 2>&1 || agent_status=$?
+  if [[ "$agent_status" == 2 && -f "$cache" ]]; then
+    # Share the environment cache with Oh My Zsh's ssh-agent plugin.
+    source "$cache" >/dev/null
+    agent_status=0
+    ssh-add -l >/dev/null 2>&1 || agent_status=$?
+  fi
+  if [[ "$agent_status" == 2 ]]; then eval "$(ssh-agent -s)"; fi
+  cache_temp=$(mktemp "$HOME/.ssh/.dogfiles-agent.XXXXXX")
+  {
+    printf 'export SSH_AUTH_SOCK=%q\n' "$SSH_AUTH_SOCK"
+    if [[ -n ${SSH_AGENT_PID:-} ]]; then printf 'export SSH_AGENT_PID=%q\n' "$SSH_AGENT_PID"; fi
+  } > "$cache_temp"
+  chmod 600 "$cache_temp"
+  mv "$cache_temp" "$cache"
+  if [[ -f "$key.pub" ]] && ssh-add -T "$key.pub" >/dev/null 2>&1; then
+    say 'GitHub key is already loaded in the SSH agent.'
+    return
+  fi
+  progress_comm 'Loading the GitHub key into the SSH agent (unlock once per agent session)...'
+  if [[ "$platform" == macos ]]; then
+    apple_ssh_add "$key" </dev/tty
+  else
+    ssh-add "$key" </dev/tty
+  fi
+}
+
 setup_ssh() {
   trumpet 'Setting up GitHub SSH access...'
   local key="$HOME/.ssh/github_id_ed25519" config="$HOME/.ssh/config" saved_dir=
   if [[ -e "$key" || -L "$key" ]]; then
-    say "Skip SSH setup: $key already exists."
+    say "Preserve existing SSH key and config: $key"
+    load_github_key "$key"
     return
   fi
   # Preflight before generating a key; never overwrite an orphaned public key.
@@ -328,16 +364,7 @@ setup_ssh() {
   chmod 600 "$config"
   rm -rf -- "$temp_dir"
   temp_dir=
-  # ssh-add returns 1 for a reachable agent with no keys, 2 for no agent.
-  local agent_status=0
-  progress_comm 'Loading the GitHub key into the SSH agent...'
-  ssh-add -l >/dev/null 2>&1 || agent_status=$?
-  if [[ "$agent_status" == 2 ]]; then eval "$(ssh-agent -s)"; fi
-  if [[ "$platform" == macos ]]; then
-    apple_ssh_add "$key" </dev/tty
-  else
-    ssh-add "$key" </dev/tty
-  fi
+  load_github_key "$key"
   new_ssh_key=true
   say 'Add this public key at https://github.com/settings/ssh/new (authentication key):'
   cat "$key.pub"
@@ -507,6 +534,24 @@ setup_login_shell() {
   fi
 }
 
+setup_tmux_shell() {
+  trumpet 'Updating the tmux shell...'
+  if "$dry_run"; then
+    say 'Would set Zsh as the default shell and SHELL for new panes in the active/default tmux server, if running.'
+    return
+  fi
+  # has-session only inspects an existing server; never start one during setup.
+  if ! tmux has-session 2>/dev/null; then
+    say 'No running tmux sessions to update; new servers will use the linked config.'
+    return
+  fi
+  local zsh_bin
+  zsh_bin=$(command -v zsh)
+  tmux set-option -g default-shell "$zsh_bin"
+  tmux set-environment -g SHELL "$zsh_bin"
+  say 'Existing tmux server updated: new panes and windows will use Zsh.'
+}
+
 verify_tools() {
   trumpet 'Verifying common CLI commands...'
   local tool missing=false
@@ -568,6 +613,7 @@ main() {
     setup_plugins
     link_configs
     setup_login_shell
+    setup_tmux_shell
     if "$dry_run"; then
       trumpet 'Verifying common CLI commands...'
       say 'Would verify the installed CLI commands.'
@@ -579,7 +625,14 @@ main() {
   say "Finished. Checkout: $repo_dir"
   if ! "$dry_run"; then
     if "$new_ssh_key"; then say 'Manual step: register the printed public key on GitHub, then test: ssh -T git@github.com'; fi
-    say 'Open a new terminal to use the configuration.'
+    if ! "$configs_only"; then
+      say 'Open a new tmux pane/window to use Zsh and your aliases.'
+      say 'Existing shell processes stay unchanged. To switch the current shell, run:'
+      printf '  export SHELL=%q; exec "$SHELL" -l\n' "$(command -v zsh)"
+      say 'Log out of the desktop and log back in to refresh its inherited shell environment.'
+    else
+      say 'Config links updated. Run the full bootstrap to install Zsh/plugins and update the login/tmux shell.'
+    fi
     if [[ "$platform" != omarchy ]]; then printf 'Optional post-installation: bash %q\n' "$repo_dir/install.sh"; fi
   fi
 }

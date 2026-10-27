@@ -108,8 +108,12 @@ elif name == 'ssh-keygen':
     dest.write_text('private-test-key')
     dest.with_suffix('.pub').write_text('ssh-ed25519 public-test-key\n')
 elif name == 'ssh-add':
-    if args == ['-l']: sys.exit(int(os.environ.get('MOCK_AGENT_STATUS', '2')))
+    loaded = bin_dir / 'agent-loaded'
+    if args == ['-l']: sys.exit(int(os.environ.get('MOCK_AGENT_STATUS',
+        ('0' if loaded.exists() else '1') if os.environ.get('SSH_AUTH_SOCK') else '2')))
+    if args[:1] == ['-T']: sys.exit(0 if loaded.exists() else 1)
     assert sys.stdin.isatty(), 'ssh-add must read the terminal'
+    loaded.touch()
 elif name == 'ssh-agent':
     print('export SSH_AUTH_SOCK=/tmp/mock-dogfiles-agent;')
 elif name == 'dscl':
@@ -121,6 +125,8 @@ elif name == 'apt-cache':
 elif name == 'dpkg-query':
     if os.environ.get('MOCK_PACKAGES_INSTALLED') == '1': print('install ok installed')
     else: sys.exit(1)
+elif name == 'tmux' and args == ['has-session']:
+    sys.exit(0 if os.environ.get('MOCK_TMUX_RUNNING') == '1' else 1)
 elif name == 'chsh':
     sys.exit(int(os.environ.get('MOCK_CHSH_BLOCKED', '0')))
 elif name == 'defaults' and os.environ.get('MOCK_MACOS_FAIL') == 'defaults':
@@ -313,10 +319,48 @@ class BootstrapTest(unittest.TestCase):
         result = self.run_main('--dry-run')
         self.assert_success(result)
         self.assertIn('Would back up:', result.stdout)
-        self.assertIn('Skip SSH setup', result.stdout)
+        self.assertIn('Preserve existing SSH key', result.stdout)
+        self.assertIn('Would reuse/start an SSH agent', result.stdout)
         self.assertIn(str(repo / 'conf/zshrc'), result.stdout)
         self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations()
+
+    def test_existing_key_loads_into_reachable_agent_and_preserves_ssh_config(self):
+        ssh = self.home / '.ssh'
+        ssh.mkdir()
+        (ssh / 'github_id_ed25519').write_text('existing private key')
+        (ssh / 'github_id_ed25519.pub').write_text('existing public key')
+        (ssh / 'config').write_text('Host personal\n  User custom\n')
+        code = LIBRARY + '\nplatform=omarchy; dry_run=false; setup_ssh\n'
+        self.assert_success(self.run_script(code, tty=True,
+                            env={'MOCK_AGENT_STATUS': '1', 'SSH_AUTH_SOCK': '/tmp/existing-agent'}))
+        calls = self.calls()
+        self.assertFalse(any(name in ('ssh-agent', 'ssh-keygen') for name, _ in calls))
+        self.assertIn(['ssh-add', [str(ssh / 'github_id_ed25519')]], calls)
+        self.assertEqual((ssh / 'config').read_text(), 'Host personal\n  User custom\n')
+        self.assertEqual((ssh / 'github_id_ed25519').read_text(), 'existing private key')
+        cache = next(ssh.glob('environment-*'))
+        self.assertEqual(cache.stat().st_mode & 0o777, 0o600)
+        self.assertIn('/tmp/existing-agent', cache.read_text())
+        self.audit.unlink()
+        # A later piped bootstrap recovers the cached agent without inherited variables.
+        self.assert_success(self.run_script(code, tty=True))
+        calls = self.calls()
+        self.assertFalse(any(name == 'ssh-agent' for name, _ in calls))
+        self.assertFalse(any(name == 'ssh-add' and args == [str(ssh / 'github_id_ed25519')]
+                             for name, args in calls))
+
+    def test_stale_cached_agent_is_replaced_and_key_loaded(self):
+        ssh = self.home / '.ssh'
+        ssh.mkdir()
+        (ssh / 'github_id_ed25519').write_text('existing key')
+        host = subprocess.check_output(['hostname', '-s'], text=True).strip()
+        cache = ssh / ('environment-' + host)
+        cache.write_text('export SSH_AUTH_SOCK=/tmp/stale-agent\n')
+        code = LIBRARY + '\nplatform=omarchy; dry_run=false; setup_ssh\n'
+        self.assert_success(self.run_script(code, tty=True))
+        self.assertIn(['ssh-agent', ['-s']], self.calls())
+        self.assertIn('/tmp/mock-dogfiles-agent', cache.read_text())
 
     def test_dry_run_with_missing_prerequisites(self):
         self.checkout()
@@ -477,6 +521,25 @@ setup_login_shell
         self.assertLess(calls.index(syntax), calls.index(startup))
         self.assertLess(calls.index(startup), calls.index(change))
 
+    def test_existing_tmux_shell_is_updated_even_when_login_shell_is_zsh(self):
+        self.env['MOCK_TMUX_RUNNING'] = '1'
+        self.assert_success(self.run_main(platform='omarchy', tty=True))
+        calls = self.calls()
+        self.assertIn(['tmux', ['set-option', '-g', 'default-shell', str(self.bin / 'zsh')]], calls)
+        self.assertIn(['tmux', ['set-environment', '-g', 'SHELL', str(self.bin / 'zsh')]], calls)
+        self.assertFalse(any(name == 'chsh' for name, _ in calls))
+        self.assertFalse(any(name == 'tmux' and args[0] in ('send-keys', 'kill-server', 'new-session')
+                             for name, args in calls))
+
+    def test_tmux_shell_setup_without_server_or_dry_run_does_not_mutate(self):
+        code = LIBRARY + '\ndry_run=false; setup_tmux_shell\n'
+        self.assert_success(self.run_script(code))
+        self.assertEqual([args for name, args in self.calls() if name == 'tmux'], [['has-session']])
+        self.audit.unlink()
+        self.assert_success(self.run_script(LIBRARY + '\ndry_run=true; setup_tmux_shell\n',
+                                            env={'MOCK_TMUX_RUNNING': '1'}))
+        self.assertFalse(any(name == 'tmux' for name, _ in self.calls()))
+
     def test_omarchy_exclusions_skip_sources_and_are_repeatable(self):
         # Exclusions are processed before validating source files.
         for relative in ('alacritty/alacritty.toml', 'kitty/kitty.conf'):
@@ -508,7 +571,9 @@ setup_login_shell
         calls_before = len(self.calls())
         self.assert_success(self.run_main(tty=True))
         calls = self.calls()[calls_before:]
-        self.assertFalse(any(command in ('ssh-keygen', 'ssh-add', 'ssh-agent') for command, _ in calls))
+        self.assertFalse(any(command in ('ssh-keygen', 'ssh-agent') for command, _ in calls))
+        self.assertFalse(any(command == 'ssh-add' and args not in (['-l'], ['-T', str(self.home / '.ssh/github_id_ed25519.pub')])
+                             for command, args in calls))
         self.assertFalse(any(command == 'git' and 'clone' in args for command, args in calls))
         remote = subprocess.check_output([REAL_GIT, '-C', str(repo), 'remote', 'get-url', 'origin'], text=True)
         self.assertEqual(remote.strip(), 'git@github.com:panacotar/dogfiles.git')
@@ -527,7 +592,9 @@ setup_login_shell
         pacman_args = [args for command, args in calls if command == 'pacman' and args[0] != '-Q']
         self.assertTrue(pacman_args)
         self.assertEqual(pacman_args[0][:3], ['-S', '--needed', '--noconfirm'])
-        self.assertFalse(any(command.startswith('ssh-') for command, _ in calls))
+        self.assertFalse(any(command == 'ssh-keygen' for command, _ in calls))
+        self.assertTrue(any(command == 'ssh-add' and args == [str(self.home / '.ssh/github_id_ed25519')]
+                            for command, args in calls))
 
     def test_lazygit_checksum_and_architecture(self):
         (self.bin / 'lazygit').unlink()
@@ -928,9 +995,12 @@ install_packages
         for name in ('zshrc', 'aliases', 'custom_commands.sh'):
             (self.home / ('.' + name)).symlink_to(self.template / 'conf' / name)
         self.env['ZDOTDIR'] = str(self.home)
-        result = subprocess.run([shutil.which('zsh'), '-ic', 'print -r -- "$path[1]"'],
+        self.env['SHELL'] = '/bin/bash'
+        result = subprocess.run([shutil.which('zsh'), '-ic', 'print -r -- "$path[1]"; print -r -- "SHELL=$SHELL"; alias ll'],
                                 env=self.env, text=True, capture_output=True)
         self.assert_success(result)
+        self.assertIn('SHELL=' + str(self.bin / 'zsh'), result.stdout)
+        self.assertIn("ll='ls -alh'", result.stdout)
         self.assertNotIn('no such file', result.stderr)
         self.assertNotIn('not found', result.stderr)
 

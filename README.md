@@ -23,11 +23,14 @@ sudo apt-get update && sudo apt-get install -y curl ca-certificates
 - Clones to `~/code/darius/dogfiles`; preserves existing checkouts and local edits.
 - Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
 - On all supported platforms, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
+- Loads the GitHub SSH key into a shared agent, including on reruns with an existing key. Zsh reuses that agent and loads missing keys on terminal startup; encrypted keys need unlocking once per agent session.
 - Installs TPM and tmux plugins; links configs with backups and safe reruns.
 - On Omarchy, applies desktop/terminal configs with personal `conf/` configs taking priority.
 
 If macOS opens the command-line tools installer, finish it and rerun bootstrap.
-Open a new terminal after setup. Options: `bash ~/code/darius/dogfiles/bootstrap.sh --help`.
+Bootstrap updates the active/default tmux server so new panes and windows use Zsh.
+Already-open shells keep running; bootstrap prints the command to switch the current shell.
+Log out of the desktop and back in to refresh its inherited shell environment. Options: `bash ~/code/darius/dogfiles/bootstrap.sh --help`.
 Both installers share announcement formatting in `scripts/output.sh`; the
 standalone bootstrap uses plain-text announcements until the checkout is available.
 
