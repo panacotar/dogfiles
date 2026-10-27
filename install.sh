@@ -267,7 +267,7 @@ fi
 
 install_debian_ruby_tooling() {
   if [[ ${ruby_tooling_ready:-false} == true ]]; then return; fi
-  packages build-essential tk-dev zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
+  packages build-essential tk-dev tklib zlib1g-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev libreadline-dev libyaml-dev libsqlite3-dev
   clone_pinned https://github.com/rbenv/rbenv.git "$HOME/.rbenv" "$RBENV_REVISION"
   clone_pinned https://github.com/rbenv/ruby-build.git "$HOME/.rbenv/plugins/ruby-build" "$RUBY_BUILD_REVISION"
   ruby_tooling_ready=true

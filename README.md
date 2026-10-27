@@ -21,7 +21,7 @@ sudo apt-get update && sudo apt-get install -y curl ca-certificates
 
 - Supports macOS, Debian/Ubuntu/Linux Mint, and already-installed Omarchy.
 - Clones to `~/code/darius/dogfiles`; preserves existing checkouts and local edits.
-- Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
+- Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, csvlens, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
 - On all supported platforms, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
 - Loads the GitHub SSH key into a shared agent, including on reruns with an existing key. Zsh reuses that agent and loads missing keys on terminal startup; encrypted keys need unlocking once per agent session.
 - Installs TPM and tmux plugins; links configs with backups and safe reruns.
@@ -42,7 +42,10 @@ OSC52 clipboard writes, but blocks clipboard reads by terminal applications.
 
 Code installed outside native package managers uses fixed commits in
 `scripts/sources.sh` and `conf/tmux.conf`. The standalone bootstrap keeps its
-Homebrew installer pin/checksum and Lazygit version/checksums near its package lists.
+Homebrew installer pin/checksum and Lazygit/csvlens versions/checksums near its package lists.
+For csvlens, bootstrap uses Homebrew on macOS and Pacman on Omarchy. On Debian-family
+systems it preserves an existing command, then prefers APT when available; otherwise
+it installs the pinned v0.15.1 binary with SHA-256 verification (x86_64 musl or ARM64 GNU).
 Oh My Zsh automatic updates are disabled; update pins deliberately after reviewing
 upstream changes. Existing source checkouts and edits are preserved, with warnings
 when their revisions differ. To adopt a new pin, move the old checkout aside and
@@ -112,6 +115,8 @@ rbenv under `~/.rbenv`, with a launcher at `~/.local/bin/wpscan`. Ruby builds an
 gem installation run as your normal user; only system dependencies use sudo.
 This can take several minutes to compile Ruby. Your global/project Ruby selection
 is preserved. Ruby and WPScan versions are maintained in `scripts/sources.sh`.
+The optional Debian Ruby-tooling dependencies include both `tk-dev` and `tklib`;
+they are also installed when selecting security tools for WPScan.
 
 Each `install.sh` run saves its output and errors in a unique
 `logs/install-YYYYMMDD-HHMMSS-XXXXXX/output.log` under the checkout, while keeping

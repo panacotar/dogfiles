@@ -5,12 +5,12 @@
 #  2. Validate an existing ~/code/darius/dogfiles checkout, preserving its branch,
 #     remotes and edits; defer identity checks until Git is available if necessary.
 #  3. Install missing prerequisites/common tools with Homebrew, APT or Pacman:
-#     git, curl, wget, unzip, zsh, vim, tldr (tealdeer), lazygit, tmux, gpg, tig,
+#     git, curl, wget, unzip, zsh, vim, tldr (tealdeer), lazygit, csvlens, tmux, gpg, tig,
 #     tree, htop, sqlite3, exiftool, pkg-config, gh, jq, and CA certificates.
 #     Linux also gets OpenSSH; Debian-family X11 sessions also get xclip.
 #     macOS checks Apple command-line tools and installs Homebrew if missing.
 #     Debian refreshes APT metadata; Omarchy uses its existing Pacman database.
-#  4. Use a pinned, checksum-verified x86_64/ARM64 Lazygit release if APT cannot provide it,
+#  4. Use pinned, checksum-verified x86_64/ARM64 releases of Lazygit and csvlens if APT cannot provide them,
 #     preserve an existing tldr client, and update the tldr cache.
 #  5. Reuse ~/.ssh/github_id_ed25519 if present. Otherwise generate it,
 #     back up/configure the GitHub SSH identity, and load the key into an agent
@@ -49,17 +49,17 @@ readonly -a COMMON_PACKAGES=(
   git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop jq ca-certificates
 )
 readonly -a MACOS_PACKAGES=(
-  lazygit sqlite exiftool pkgconf gh
+  lazygit sqlite exiftool pkgconf gh csvlens
 )
 readonly -a DEBIAN_PACKAGES=(
-  sqlite3 libimage-exiftool-perl pkg-config gh openssh-client
+  sqlite3 libimage-exiftool-perl pkg-config gh openssh-client xz-utils
 )
-# Lazygit is handled separately on Debian: APT when available, otherwise a binary.
+# Lazygit and csvlens use APT when available on Debian, otherwise verified binaries.
 readonly -a DEBIAN_X11_PACKAGES=(
   xclip
 )
 readonly -a OMARCHY_PACKAGES=(
-  lazygit sqlite perl-image-exiftool pkgconf github-cli openssh
+  lazygit sqlite perl-image-exiftool pkgconf github-cli openssh csvlens
 )
 
 # Pins needed before a checkout exists. Other source pins: scripts/sources.sh
@@ -69,6 +69,9 @@ readonly HOMEBREW_INSTALL_SHA256=5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379e
 readonly LAZYGIT_VERSION=v0.66.2
 readonly LAZYGIT_ARM64_SHA256=79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4
 readonly LAZYGIT_X86_64_SHA256=158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034
+readonly CSVLENS_VERSION=v0.15.1
+readonly CSVLENS_ARM64_SHA256=7671466036ebc22b1b9b958890a638fd21a06452137fb9ca1321448e5afea7ad
+readonly CSVLENS_X86_64_SHA256=ab086b420e453618fd1544eb4e09cc98279e8570b739725592feb241cd1bef4b
 
 usage() {
   cat <<'HELP'
@@ -211,6 +214,26 @@ install_lazygit_binary() {
   temp_dir=
 }
 
+install_csvlens_binary() {
+  if have csvlens; then return; fi
+  progress_comm 'Installing csvlens from a checksum-verified release...'
+  local target expected asset actual
+  case "$(uname -m)" in
+    x86_64|amd64) target=x86_64-unknown-linux-musl; expected=$CSVLENS_X86_64_SHA256 ;;
+    aarch64|arm64) target=aarch64-unknown-linux-gnu; expected=$CSVLENS_ARM64_SHA256 ;;
+    *) die "No csvlens binary configured for architecture $(uname -m)" ;;
+  esac
+  asset="csvlens-$target"
+  temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
+  curl -fsSL "https://github.com/YS-L/csvlens/releases/download/$CSVLENS_VERSION/$asset.tar.xz" -o "$temp_dir/$asset.tar.xz"
+  actual=$(sha256sum "$temp_dir/$asset.tar.xz")
+  [[ "${actual%% *}" == "$expected" ]] || die 'csvlens checksum verification failed.'
+  tar -xJf "$temp_dir/$asset.tar.xz" -C "$temp_dir" "$asset/csvlens"
+  as_root install -m 0755 "$temp_dir/$asset/csvlens" /usr/local/bin/csvlens
+  rm -rf -- "$temp_dir"
+  temp_dir=
+}
+
 install_packages() {
   trumpet 'Installing common CLI tools...'
   package_list
@@ -218,7 +241,7 @@ install_packages() {
   if "$dry_run"; then
     case "$platform" in
       macos) say 'Would check Apple command-line tools; install Homebrew if missing, then missing formulae.' ;;
-      debian) say 'Would refresh APT metadata, install missing packages and Lazygit (APT when available; otherwise a checksum-verified upstream binary).' ;;
+      debian) say 'Would refresh APT metadata, install missing packages, Lazygit and csvlens (APT when available; otherwise checksum-verified upstream binaries).' ;;
       omarchy) say 'Would install missing packages with pacman -S --needed (no database refresh).' ;;
     esac
     say 'Would update the tldr cache.'
@@ -277,6 +300,14 @@ install_packages() {
           as_root apt-get install -y lazygit
         else
           install_lazygit_binary
+        fi
+      fi
+      if ! have csvlens; then
+        if apt-cache show csvlens >/dev/null 2>&1 && [[ $(apt-cache policy csvlens) != *'Candidate: (none)'* ]]; then
+          progress_comm 'Installing csvlens with APT...'
+          as_root apt-get install -y csvlens
+        else
+          install_csvlens_binary
         fi
       fi ;;
     omarchy)
@@ -566,7 +597,7 @@ setup_tmux_shell() {
 verify_tools() {
   trumpet 'Verifying common CLI commands...'
   local tool missing=false
-  for tool in git curl wget unzip zsh vim tldr lazygit tmux gpg tig tree htop sqlite3 exiftool pkg-config gh jq ssh; do
+  for tool in git curl wget unzip zsh vim tldr lazygit csvlens tmux gpg tig tree htop sqlite3 exiftool pkg-config gh jq ssh; do
     if ! have "$tool"; then say "Missing command after installation: $tool"; missing=true; fi
   done
   if "$missing"; then die 'Some common tools are unavailable; check the package output above.'; fi

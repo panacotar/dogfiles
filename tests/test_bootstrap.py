@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import shutil
 import subprocess
@@ -23,7 +24,7 @@ def isolated_source(source):
     # Host installations must not affect the mocked platform/tool inventory.
     source = source.replace('/usr/share/omarchy', '$HOME/mock-system/omarchy')
     return source.replace('have() { command -v "$1" >/dev/null 2>&1; }',
-                          'have() { case "$1" in tldr|lazygit) [[ -x "$MOCK_BIN/$1" ]] ;; '
+                          'have() { case "$1" in tldr|lazygit|csvlens) [[ -x "$MOCK_BIN/$1" ]] ;; '
                           '*) command -v "$1" >/dev/null 2>&1 ;; esac; }')
 
 
@@ -135,7 +136,13 @@ elif name == 'dscl':
 elif name == 'getent':
     print('tester:x:1000:1000::' + str(home) + ':' + os.environ.get('MOCK_LOGIN_SHELL', str(bin_dir / 'zsh')))
 elif name == 'apt-cache':
+    if args[-1] == 'csvlens' and os.environ.get('MOCK_CSVLENS_APT'):
+        if args[0] == 'policy':
+            print('  Candidate: ' + ('(none)' if os.environ['MOCK_CSVLENS_APT'] == 'none' else '0.15.1'))
+        sys.exit(0)
     sys.exit(1)
+elif name == 'apt-get' and args == ['install', '-y', 'csvlens']:
+    (bin_dir / 'csvlens').symlink_to(bin_dir / 'dispatcher')
 elif name == 'dpkg-query':
     if os.environ.get('MOCK_PACKAGES_INSTALLED') == '1': print('install ok installed')
     else: sys.exit(1)
@@ -162,6 +169,9 @@ elif name == 'curl':
             output.write_text(digest + '  ' + asset + '\n')
         elif url.endswith('.tar.gz'):
             shutil.copyfile(os.environ['TARBALL'], output)
+        elif 'csvlens' in url and url.endswith('.tar.xz'):
+            if os.environ.get('MOCK_CSVLENS_DOWNLOAD_FAIL') == '1': sys.exit(22)
+            shutil.copyfile(pathlib.Path(os.environ['CSVLENS_ASSETS']) / url.rsplit('/', 1)[1], output)
         elif 'Homebrew/install/' in url:
             output.write_text('printf "installer executed\\n" > "$HOME/homebrew-installer-ran"\n')
         else: raise AssertionError('Unexpected download: ' + url)
@@ -170,14 +180,21 @@ elif name == 'jq':
 elif name == 'shasum':
     print(hashlib.sha256(pathlib.Path(args[-1]).read_bytes()).hexdigest() + '  ' + args[-1])
 elif name == 'sha256sum':
+    if 'csvlens-' in args[0]:
+        digest = hashlib.sha256(pathlib.Path(args[0]).read_bytes()).hexdigest()
+        if os.environ.get('BAD_CHECKSUM') == '1': digest = '0' * 64
+        print(digest + '  ' + args[0])
+        sys.exit(0)
     source = (pathlib.Path(os.environ['TEMPLATE']) / 'bootstrap.sh').read_text()
     arch = 'ARM64' if os.environ.get('MOCK_ARCH', 'arm64') in ('arm64', 'aarch64') else 'X86_64'
     digest = re.search(r'readonly LAZYGIT_' + arch + r'_SHA256=([a-f0-9]+)', source)[1]
     if os.environ.get('BAD_CHECKSUM') == '1': digest = '0' * 64
     print(digest + '  ' + args[0])
 elif name == 'install':
-    assert args[-1] == '/usr/local/bin/lazygit'
-    (bin_dir / 'lazygit').symlink_to(bin_dir / 'dispatcher')
+    assert args[-1] in ('/usr/local/bin/lazygit', '/usr/local/bin/csvlens')
+    if args[-1].endswith('/csvlens'):
+        assert pathlib.Path(args[-2]).read_bytes() == b'#!/bin/sh\necho csvlens\n'
+    (bin_dir / pathlib.Path(args[-1]).name).symlink_to(bin_dir / 'dispatcher')
 elif name == 'grep' and os.environ.get('MOCK_GREP_SHELLS') == '1' and args[-1] == '/etc/shells':
     sys.exit(0)
 elif name == 'grep':
@@ -217,7 +234,7 @@ class BootstrapTest(unittest.TestCase):
         for command in ('uname', 'id', 'pacman', 'sudo', 'git', 'brew', 'xcode-select',
                         'ssh-keygen', 'ssh-agent', 'ssh-add', 'dscl', 'getent', 'apt-cache',
                         'apt-get', 'dpkg-query', 'curl', 'jq', 'sha256sum', 'shasum', 'install', 'grep', 'zsh',
-                        'tldr', 'lazygit', 'tmux', 'gpg', 'tig', 'tree', 'htop',
+                        'tldr', 'lazygit', 'csvlens', 'tmux', 'gpg', 'tig', 'tree', 'htop',
                         'sqlite3', 'exiftool', 'pkg-config', 'gh', 'chsh', 'wget',
                         'defaults', 'osascript', 'gem', 'go', 'tic'):
             (self.bin / command).symlink_to(dispatcher)
@@ -228,9 +245,26 @@ class BootstrapTest(unittest.TestCase):
             entry.size = len(data)
             entry.mode = 0o755
             archive.addfile(entry, io.BytesIO(data))
+        csvlens_assets = self.work / 'csvlens-assets'
+        csvlens_assets.mkdir()
+        source = (self.template / 'bootstrap.sh').read_text()
+        for arch, target in (('X86_64', 'x86_64-unknown-linux-musl'),
+                             ('ARM64', 'aarch64-unknown-linux-gnu')):
+            asset = csvlens_assets / ('csvlens-' + target + '.tar.xz')
+            with tarfile.open(asset, 'w:xz') as archive:
+                data = b'#!/bin/sh\necho csvlens\n'
+                entry = tarfile.TarInfo('csvlens-' + target + '/csvlens')
+                entry.size = len(data)
+                entry.mode = 0o755
+                archive.addfile(entry, io.BytesIO(data))
+            digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+            source = re.sub(r'(readonly CSVLENS_' + arch + r'_SHA256=)[a-f0-9]+',
+                            lambda match: match[1] + digest, source)
+        (self.template / 'bootstrap.sh').write_text(source)
+        self.csvlens_library = source.rsplit('\nmain "$@"', 1)[0]
         self.env = dict(os.environ, HOME=str(self.home), PATH=str(self.bin) + ':/usr/bin:/bin',
                         AUDIT=str(self.audit), MOCK_BIN=str(self.bin), TEMPLATE=str(self.template),
-                        REAL_GIT=REAL_GIT, TARBALL=str(tarball), GIT_CONFIG_NOSYSTEM='1',
+                        REAL_GIT=REAL_GIT, TARBALL=str(tarball), CSVLENS_ASSETS=str(csvlens_assets), GIT_CONFIG_NOSYSTEM='1',
                         GIT_CONFIG_GLOBAL='/dev/null', SHELL=str(self.bin / 'zsh'))
         for key in ('XDG_CONFIG_HOME', 'XDG_STATE_HOME', 'DISPLAY', 'WAYLAND_DISPLAY', 'BASH_ENV', 'ZDOTDIR'):
             self.env.pop(key, None)
@@ -687,6 +721,80 @@ setup_login_shell
         downloads = [arg for name, args in self.calls() if name == 'curl' for arg in args if arg.startswith('https://')]
         self.assertTrue(all('/v0.66.2/' in url and url.endswith('.tar.gz') for url in downloads))
 
+    def test_csvlens_fallback_architectures_and_cleanup(self):
+        downloads = self.work / 'downloads'
+        downloads.mkdir()
+        code = self.csvlens_library + '\ndetect_platform() { platform=debian; }\nmain\n'
+        for arch, target in (('x86_64', 'x86_64-unknown-linux-musl'),
+                             ('aarch64', 'aarch64-unknown-linux-gnu')):
+            with self.subTest(arch=arch):
+                (self.bin / 'csvlens').unlink()
+                self.audit.write_text('')
+                result = self.run_script(code, tty=True,
+                                         env={'MOCK_ARCH': arch, 'TMPDIR': str(downloads),
+                                              'MOCK_CSVLENS_APT': 'none'})
+                self.assert_success(result)
+                self.assertEqual(list(downloads.iterdir()), [])
+                installs = [args for name, args in self.calls() if name == 'install']
+                self.assertEqual(len(installs), 1)
+                self.assertEqual(installs[0][:2], ['-m', '0755'])
+                self.assertEqual(installs[0][-1], '/usr/local/bin/csvlens')
+                self.assertTrue(installs[0][-2].endswith('/csvlens-' + target + '/csvlens'))
+                urls = [args[1] for name, args in self.calls() if name == 'curl']
+                self.assertEqual(urls, ['https://github.com/YS-L/csvlens/releases/download/v0.15.1/csvlens-' + target + '.tar.xz'])
+
+    def test_csvlens_failed_verification_or_download_cleans_up(self):
+        (self.bin / 'csvlens').unlink()
+        downloads = self.work / 'downloads'
+        downloads.mkdir()
+        code = self.csvlens_library + '\ndetect_platform() { platform=debian; }\nmain\n'
+        for failure in ({'BAD_CHECKSUM': '1'}, {'MOCK_CSVLENS_DOWNLOAD_FAIL': '1'}):
+            with self.subTest(failure=failure):
+                self.audit.write_text('')
+                result = self.run_script(code, tty=True, env=dict(failure, TMPDIR=str(downloads)))
+                self.assertNotEqual(result.returncode, 0)
+                if 'BAD_CHECKSUM' in failure:
+                    self.assertIn('csvlens checksum verification failed', result.stdout)
+                self.assertFalse(any(name == 'install' for name, _ in self.calls()))
+                self.assertFalse((self.bin / 'csvlens').exists())
+                self.assertEqual(list(downloads.iterdir()), [])
+
+    def test_csvlens_unsupported_architecture_does_not_download(self):
+        (self.bin / 'csvlens').unlink()
+        code = self.csvlens_library + '\ndetect_platform() { platform=debian; }\nmain\n'
+        result = self.run_script(code, tty=True, env={'MOCK_ARCH': 'riscv64'})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('No csvlens binary configured for architecture riscv64', result.stdout)
+        self.assertFalse(any(name in ('curl', 'install') for name, _ in self.calls()))
+
+    def test_csvlens_prefers_apt_and_preserves_existing_command(self):
+        (self.bin / 'csvlens').unlink()
+        code = self.csvlens_library + '\nplatform=debian; dry_run=false; install_packages\n'
+        self.assert_success(self.run_script(code, tty=True, env={'MOCK_CSVLENS_APT': 'available'}))
+        self.assertIn(['apt-get', ['install', '-y', 'csvlens']], self.calls())
+        self.assertFalse(any(name in ('curl', 'install') for name, _ in self.calls()))
+        self.audit.write_text('')
+        self.assert_success(self.run_script(code, tty=True))
+        self.assertFalse(any(name == 'apt-cache' and 'csvlens' in args for name, args in self.calls()))
+        self.assertFalse(any(name == 'apt-get' and args == ['install', '-y', 'csvlens'] for name, args in self.calls()))
+        self.assertFalse(any(name in ('curl', 'install') for name, _ in self.calls()))
+
+    def test_csvlens_missing_dry_run_and_configs_only_do_not_install(self):
+        (self.bin / 'csvlens').unlink()
+        self.checkout()
+        code = self.csvlens_library + '\ndetect_platform() { platform=debian; }\nmain '
+        self.assert_success(self.run_script(code + '--dry-run\n'))
+        self.assert_no_mutations()
+        self.audit.write_text('')
+        self.assert_success(self.run_script('bash "$TEMPLATE/bootstrap.sh" --configs-only\n'))
+        self.assert_no_mutations()
+
+    def test_debian_ruby_tooling_restores_tklib_alongside_tk_dev(self):
+        self.prepare_linux_post_installer()
+        self.assert_success(self.run_script('bash "$TEMPLATE/install.sh"', tty=True, tty_input='1\n\n'))
+        installs = [args for name, args in self.calls() if name == 'apt-get' and args[:1] == ['install']]
+        self.assertTrue(any('tklib' in args and 'tk-dev' in args for args in installs))
+
     def test_homebrew_checksum_rejects_download_before_execution(self):
         code = LIBRARY + '''
 platform=macos; dry_run=false; temp_dir=
@@ -758,7 +866,8 @@ install_packages
         self.assertFalse(any(name == 'sudo' and args[:1] == ['gem'] for name, args in calls))
         apt_installs = [args for name, args in calls if name == 'apt-get' and args[:1] == ['install']]
         self.assertFalse(any('seclists' in args or 'ruby-dev' in args for args in apt_installs))
-        self.assertTrue(any('build-essential' in args and 'libyaml-dev' in args for args in apt_installs))
+        self.assertTrue(any('build-essential' in args and 'libyaml-dev' in args and
+                            'tklib' in args and 'tk-dev' in args for args in apt_installs))
         seclists = self.home / 'code/misc/SecLists'
         self.assertEqual((seclists / '.mock-revision').read_text(),
                          '758fecf4925900dd1bd0a3cba39551d6b4f2da8c')
@@ -1086,9 +1195,9 @@ install_packages
     def test_package_constants_preserve_platform_package_sets(self):
         (self.bin / 'tldr').unlink()
         expected = {
-            'macos': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite exiftool pkgconf gh jq ca-certificates',
-            'debian': 'git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates',
-            'omarchy': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates',
+            'macos': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite exiftool pkgconf gh jq ca-certificates csvlens',
+            'debian': 'git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates xz-utils',
+            'omarchy': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates csvlens',
         }
         for platform, packages in expected.items():
             result = self.run_script(LIBRARY + '\nplatform=' + platform + '; package_list; printf "%s\\n" "${packages[@]}"\n')
