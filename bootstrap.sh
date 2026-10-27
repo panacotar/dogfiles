@@ -17,18 +17,18 @@
 #     (with Keychain on macOS). Print the public key for manual GitHub registration.
 #  6. Create ~/code/darius and clone dogfiles over HTTPS if absent; set only a new
 #     checkout's origin to SSH. Existing checkout remotes are left as they are.
-#  7. On macOS/Debian, install Oh My Zsh while keeping .zshrc, plus autosuggestions
+#  7. On all platforms, install Oh My Zsh while keeping .zshrc, plus autosuggestions
 #     and syntax highlighting. On all platforms, install TPM and the tmux plugins
 #     declared in conf/tmux.conf at fixed commits, preserving existing checkouts.
 #     Source pins are in scripts/sources.sh; tmux pins are in conf/tmux.conf.
 #  8. Validate conf/*.links manifests and config destinations, back up conflicts
 #     under the XDG state directory, and create symlinks for Git/Vim/tmux plus
-#     platform-specific shell/application configs. Leave correct links untouched.
+#     personal shell/application configs. Leave correct links untouched.
 #     On macOS, link conf/macos as ~/.macos; applying its settings is install.sh's
 #     responsibility. Git identity/ignore/signing come from the linked gitconfig.
-#  9. On Omarchy, delegate desktop/terminal config to omarchy/install.sh, preserve
-#     its shell setup, and restore monitor settings only with --include-monitors.
-# 10. On macOS/Debian, validate Zsh startup and make it the login shell; print a
+#  9. On Omarchy, delegate desktop/terminal config to omarchy/install.sh, giving
+#     personal configs priority, and restore monitor settings only with --include-monitors.
+# 10. On all platforms, validate Zsh startup and make it the login shell; print a
 #     manual command if blocked. Verify installed commands and print next steps.
 #
 # --dry-run previews these steps without changes, downloads, logs or prompts.
@@ -72,7 +72,8 @@ usage() {
   cat <<'HELP'
 Usage: bash bootstrap.sh [--dry-run] [--configs-only] [--include-monitors]
 
-Install common tools, prepare SSH, clone ~/code/darius/dogfiles and link configs.
+Install common tools, Oh My Zsh, set Zsh as the login shell, and link configs.
+Personal conf/ settings take priority over Omarchy desktop/terminal settings.
 --dry-run          Inspect and print actions without changing the machine.
 --configs-only     Only link configs from this local checkout (or the standard path).
 --include-monitors Restore Omarchy monitor settings too (default: skip).
@@ -359,8 +360,7 @@ clone_checkout() {
 
 collect_links() {
   sources=(); targets=()
-  local manifests=(common) manifest source kind relative extra target parent
-  if [[ "$platform" != omarchy ]]; then manifests+=(shell); fi
+  local manifests=(common shell) manifest source kind relative extra target parent
   if [[ "$platform" == macos ]]; then manifests+=(macos); fi
   for manifest in "${manifests[@]}"; do
     [[ -f "$repo_dir/conf/$manifest.links" ]] || die "Missing manifest: $repo_dir/conf/$manifest.links"
@@ -391,9 +391,8 @@ link_configs() {
     say "Would link shared Git/Vim/tmux configs from $repo_dir/conf."
     if [[ "$platform" == omarchy ]]; then
       say 'Would run bash omarchy/install.sh --dry-run (monitor settings skipped unless --include-monitors).'
-    else
-      say 'Would link Zsh, aliases, custom commands, Ruby tool configs and Alacritty configs.'
     fi
+    say 'Would link Zsh, aliases, custom commands, Ruby tool configs and Alacritty configs (personal configs take priority).'
     say "Would back up conflicting files/links under $state_root/dogfiles/backups/."
     return
   fi
@@ -431,6 +430,11 @@ link_configs() {
     local args=()
     if "$dry_run"; then args+=(--dry-run); fi
     if "$include_monitors"; then args+=(--include-monitors); fi
+    for target in "${targets[@]}"; do
+      if [[ "$target" == "$config_root/"* ]]; then
+        args+=(--exclude-config "${target#"$config_root/"}")
+      fi
+    done
     progress_comm 'Processing Omarchy desktop and terminal configuration...'
     bash "$repo_dir/omarchy/install.sh" ${args[@]+"${args[@]}"}
   fi
@@ -440,34 +444,32 @@ setup_plugins() {
   trumpet 'Installing shell and tmux plugins...'
   if "$dry_run"; then
     say 'Would install TPM and the tmux plugins configured in tmux.conf at pinned commits (preserving existing checkouts).'
-    if [[ "$platform" != omarchy ]]; then say 'Would install Oh My Zsh, zsh-autosuggestions and zsh-syntax-highlighting at pinned commits if missing.'; fi
+    say 'Would install Oh My Zsh, zsh-autosuggestions and zsh-syntax-highlighting at pinned commits if missing.'
     return
   fi
   source "$repo_dir/scripts/sources.sh"
-  if [[ "$platform" != omarchy ]]; then
-    if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
-      progress_comm 'Installing Oh My Zsh...'
-      temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
-      clone_pinned https://github.com/ohmyzsh/ohmyzsh.git "$temp_dir/ohmyzsh" "$OH_MY_ZSH_REVISION"
-      # The official installer fetches a branch. Give it a local branch at the
-      # verified commit so its second fetch cannot silently install newer code.
-      git -C "$temp_dir/ohmyzsh" branch dogfiles-pinned "$OH_MY_ZSH_REVISION"
-      ZSH="$HOME/.oh-my-zsh" ZDOTDIR="$HOME" REPO=ohmyzsh/ohmyzsh \
-        REMOTE="file://$temp_dir/ohmyzsh" BRANCH=dogfiles-pinned \
-        sh "$temp_dir/ohmyzsh/tools/install.sh" --unattended --keep-zshrc
-      [[ $(git -C "$HOME/.oh-my-zsh" rev-parse HEAD) == "$OH_MY_ZSH_REVISION" ]] || die 'Oh My Zsh revision verification failed.'
-      git -C "$HOME/.oh-my-zsh" checkout --detach "$OH_MY_ZSH_REVISION"
-      git -C "$HOME/.oh-my-zsh" remote set-url origin https://github.com/ohmyzsh/ohmyzsh.git
-      git -C "$HOME/.oh-my-zsh" config oh-my-zsh.branch master
-      rm -rf -- "$temp_dir"
-      temp_dir=
-    elif [[ -d "$HOME/.oh-my-zsh/.git" ]]; then
-      check_existing_revision "$HOME/.oh-my-zsh" "$OH_MY_ZSH_REVISION"
-    fi
-    [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]] || die 'Existing Oh My Zsh installation is incomplete.'
-    clone_pinned https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" "$ZSH_AUTOSUGGESTIONS_REVISION"
-    clone_pinned https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" "$ZSH_SYNTAX_HIGHLIGHTING_REVISION"
+  if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
+    progress_comm 'Installing Oh My Zsh...'
+    temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dogfiles.XXXXXX")
+    clone_pinned https://github.com/ohmyzsh/ohmyzsh.git "$temp_dir/ohmyzsh" "$OH_MY_ZSH_REVISION"
+    # The official installer fetches a branch. Give it a local branch at the
+    # verified commit so its second fetch cannot silently install newer code.
+    git -C "$temp_dir/ohmyzsh" branch dogfiles-pinned "$OH_MY_ZSH_REVISION"
+    ZSH="$HOME/.oh-my-zsh" ZDOTDIR="$HOME" REPO=ohmyzsh/ohmyzsh \
+      REMOTE="file://$temp_dir/ohmyzsh" BRANCH=dogfiles-pinned \
+      sh "$temp_dir/ohmyzsh/tools/install.sh" --unattended --keep-zshrc
+    [[ $(git -C "$HOME/.oh-my-zsh" rev-parse HEAD) == "$OH_MY_ZSH_REVISION" ]] || die 'Oh My Zsh revision verification failed.'
+    git -C "$HOME/.oh-my-zsh" checkout --detach "$OH_MY_ZSH_REVISION"
+    git -C "$HOME/.oh-my-zsh" remote set-url origin https://github.com/ohmyzsh/ohmyzsh.git
+    git -C "$HOME/.oh-my-zsh" config oh-my-zsh.branch master
+    rm -rf -- "$temp_dir"
+    temp_dir=
+  elif [[ -d "$HOME/.oh-my-zsh/.git" ]]; then
+    check_existing_revision "$HOME/.oh-my-zsh" "$OH_MY_ZSH_REVISION"
   fi
+  [[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]] || die 'Existing Oh My Zsh installation is incomplete.'
+  clone_pinned https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" "$ZSH_AUTOSUGGESTIONS_REVISION"
+  clone_pinned https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" "$ZSH_SYNTAX_HIGHLIGHTING_REVISION"
   # Clone the manifest's declared plugins directly. This avoids starting a tmux
   # server or modifying a user's running sessions just to install plugins.
   local entry plugin revision
@@ -481,7 +483,6 @@ setup_plugins() {
 
 setup_login_shell() {
   trumpet 'Checking the login shell...'
-  if [[ "$platform" == omarchy ]]; then say 'Preserve Omarchy login shell and shell configuration.'; return; fi
   if "$dry_run"; then say 'Would validate Zsh startup and make Zsh the login shell if necessary.'; return; fi
   local zsh_bin current_shell
   zsh_bin=$(command -v zsh)

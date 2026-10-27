@@ -3,3 +3,4 @@ gitconfig|home|.gitconfig
 gitignore|home|.gitignore
 vimrc|home|.vimrc
 tmux.conf|home|.tmux.conf
+tmux.conf|config|tmux/tmux.conf

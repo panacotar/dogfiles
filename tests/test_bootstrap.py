@@ -17,7 +17,17 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 BASH = '/bin/bash'
 REAL_GIT = shutil.which('git')
-LIBRARY = (ROOT / 'bootstrap.sh').read_text().rsplit('\nmain "$@"', 1)[0]
+
+
+def isolated_source(source):
+    # Host installations must not affect the mocked platform/tool inventory.
+    source = source.replace('/usr/share/omarchy', '$HOME/mock-system/omarchy')
+    return source.replace('have() { command -v "$1" >/dev/null 2>&1; }',
+                          'have() { case "$1" in tldr|lazygit) [[ -x "$MOCK_BIN/$1" ]] ;; '
+                          '*) command -v "$1" >/dev/null 2>&1 ;; esac; }')
+
+
+LIBRARY = isolated_source((ROOT / 'bootstrap.sh').read_text()).rsplit('\nmain "$@"', 1)[0]
 
 MOCK = r'''#!PYTHON
 import hashlib, json, os, pathlib, re, shutil, subprocess, sys
@@ -105,7 +115,7 @@ elif name == 'ssh-agent':
 elif name == 'dscl':
     print('UserShell: ' + str(bin_dir / 'zsh'))
 elif name == 'getent':
-    print('tester:x:1000:1000::' + str(home) + ':' + str(bin_dir / 'zsh'))
+    print('tester:x:1000:1000::' + str(home) + ':' + os.environ.get('MOCK_LOGIN_SHELL', str(bin_dir / 'zsh')))
 elif name == 'apt-cache':
     sys.exit(1)
 elif name == 'dpkg-query':
@@ -137,6 +147,8 @@ elif name == 'curl':
         else: raise AssertionError('Unexpected download: ' + url)
 elif name == 'jq':
     print(json.load(sys.stdin)['tag_name'])
+elif name == 'shasum':
+    print(hashlib.sha256(pathlib.Path(args[-1]).read_bytes()).hexdigest() + '  ' + args[-1])
 elif name == 'sha256sum':
     source = (pathlib.Path(os.environ['TEMPLATE']) / 'bootstrap.sh').read_text()
     arch = 'ARM64' if os.environ.get('MOCK_ARCH', 'arm64') in ('arm64', 'aarch64') else 'X86_64'
@@ -176,7 +188,7 @@ class BootstrapTest(unittest.TestCase):
         self.template = self.work / 'template'
         self.template.mkdir()
         for name in ('bootstrap.sh', 'install.sh'):
-            shutil.copy(ROOT / name, self.template / name)
+            (self.template / name).write_text(isolated_source((ROOT / name).read_text()))
         for name in ('conf', 'omarchy', 'scripts'):
             shutil.copytree(ROOT / name, self.template / name)
         dispatcher = self.bin / 'dispatcher'
@@ -184,7 +196,7 @@ class BootstrapTest(unittest.TestCase):
         dispatcher.chmod(0o755)
         for command in ('uname', 'id', 'pacman', 'sudo', 'git', 'brew', 'xcode-select',
                         'ssh-keygen', 'ssh-agent', 'ssh-add', 'dscl', 'getent', 'apt-cache',
-                        'apt-get', 'dpkg-query', 'curl', 'jq', 'sha256sum', 'install', 'grep', 'zsh',
+                        'apt-get', 'dpkg-query', 'curl', 'jq', 'sha256sum', 'shasum', 'install', 'grep', 'zsh',
                         'tldr', 'lazygit', 'tmux', 'gpg', 'tig', 'tree', 'htop',
                         'sqlite3', 'exiftool', 'pkg-config', 'gh', 'chsh', 'wget',
                         'defaults', 'osascript', 'gem', 'go', 'tic'):
@@ -409,13 +421,19 @@ setup_login_shell
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((self.home / '.gitconfig').exists(), 'preflight must finish before linking')
 
-    def test_omarchy_config_only_preserves_shell_and_monitor_opt_in(self):
+    def test_omarchy_personal_configs_take_priority_and_monitor_opt_in(self):
         repo = self.checkout()
         (self.home / '.bashrc').write_text('Omarchy shell')
         (self.home / '.zshrc').write_text('keep zsh')
         self.env['MOCK_OS'] = 'Linux'
         self.env['MOCK_OMARCHY'] = '1'
         self.env['CHECKOUT'] = str(repo)
+        self.env['XDG_CONFIG_HOME'] = str(self.home / 'custom config')
+        config = self.home / 'custom config'
+        (config / 'tmux').mkdir(parents=True)
+        (config / 'tmux/tmux.conf').write_text('old tmux')
+        (config / 'alacritty').mkdir()
+        (config / 'alacritty/alacritty.toml').symlink_to(repo / 'omarchy/config/alacritty/alacritty.toml')
         command = 'bash "$CHECKOUT/bootstrap.sh" --configs-only'
         before = snapshot(self.home)
         preview = self.run_script(command + ' --dry-run')
@@ -424,11 +442,59 @@ setup_login_shell
         self.assertEqual(snapshot(self.home), before)
         self.assert_success(self.run_script(command))
         self.assertEqual((self.home / '.bashrc').read_text(), 'Omarchy shell')
-        self.assertEqual((self.home / '.zshrc').read_text(), 'keep zsh')
-        self.assertFalse((self.home / '.config/hypr/monitors.lua').exists())
-        self.assertTrue((self.home / '.config/alacritty/alacritty.toml').readlink().is_relative_to(repo / 'omarchy'))
+        self.assertEqual((self.home / '.zshrc').readlink(), repo / 'conf/zshrc')
+        self.assertEqual((self.home / '.aliases').readlink(), repo / 'conf/aliases')
+        self.assertFalse((config / 'hypr/monitors.lua').exists())
+        self.assertEqual((config / 'alacritty/alacritty.toml').readlink(), repo / 'conf/alacritty.toml')
+        for target in (self.home / '.tmux.conf', config / 'tmux/tmux.conf'):
+            self.assertEqual(target.readlink(), repo / 'conf/tmux.conf')
+        saved = next((self.home / '.local/state/dogfiles/backups').glob('bootstrap-*'))
+        self.assertEqual((saved / str(self.home).lstrip('/') / '.zshrc').read_text(), 'keep zsh')
+        self.assertEqual((saved / str(config).lstrip('/') / 'tmux/tmux.conf').read_text(), 'old tmux')
+        self.assertEqual((saved / str(config).lstrip('/') / 'alacritty/alacritty.toml').readlink(),
+                         repo / 'omarchy/config/alacritty/alacritty.toml')
+        before = snapshot(self.home)
+        self.assert_success(self.run_script(command))
+        self.assertEqual(snapshot(self.home), before)
         self.assert_success(self.run_script(command + ' --include-monitors'))
-        self.assertTrue((self.home / '.config/hypr/monitors.lua').is_symlink())
+        self.assertTrue((config / 'hypr/monitors.lua').is_symlink())
+        self.assert_no_mutations()
+
+    def test_omarchy_full_setup_installs_and_validates_zsh(self):
+        self.env.update(MOCK_LOGIN_SHELL='/usr/bin/bash', MOCK_GREP_SHELLS='1')
+        result = self.run_main(platform='omarchy', tty=True)
+        self.assert_success(result)
+        self.assertTrue((self.home / '.zshrc').is_symlink())
+        self.assertTrue((self.home / '.oh-my-zsh/oh-my-zsh.sh').is_file())
+        for plugin in ('zsh-autosuggestions', 'zsh-syntax-highlighting'):
+            self.assertTrue((self.home / '.oh-my-zsh/custom/plugins' / plugin / '.git').is_dir())
+        calls = self.calls()
+        syntax = ['zsh', ['-n', str(self.home / '.zshrc')]]
+        startup = ['zsh', ['-ic', 'exit']]
+        change = ['chsh', ['-s', str(self.bin / 'zsh')]]
+        for call in (syntax, startup, change):
+            self.assertIn(call, calls)
+        self.assertLess(calls.index(syntax), calls.index(startup))
+        self.assertLess(calls.index(startup), calls.index(change))
+
+    def test_omarchy_exclusions_skip_sources_and_are_repeatable(self):
+        # Exclusions are processed before validating source files.
+        for relative in ('alacritty/alacritty.toml', 'kitty/kitty.conf'):
+            (self.template / 'omarchy/config' / relative).unlink()
+        command = ('bash "$TEMPLATE/omarchy/install.sh" --exclude-config alacritty/alacritty.toml '
+                   '--exclude-config kitty/kitty.conf')
+        before = snapshot(self.home)
+        self.assert_success(self.run_script(command + ' --dry-run'))
+        self.assertEqual(snapshot(self.home), before)
+        self.assert_success(self.run_script(command))
+        self.assertFalse((self.home / '.config/alacritty/alacritty.toml').exists())
+        self.assertFalse((self.home / '.config/kitty/kitty.conf').exists())
+        self.assertTrue((self.home / '.config/hypr/hyprland.lua').is_symlink())
+        for args in ('--exclude-config', '--exclude-config ../outside', '--exclude-config /absolute',
+                     '--exclude-config --dry-run'):
+            before = snapshot(self.home)
+            self.assertNotEqual(self.run_script('bash "$TEMPLATE/omarchy/install.sh" ' + args).returncode, 0)
+            self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations()
 
     def test_full_macos_setup_and_rerun(self):

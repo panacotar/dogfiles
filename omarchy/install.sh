@@ -4,25 +4,35 @@ set -euo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: bash omarchy/install.sh [--dry-run] [--include-monitors]
+Usage: bash omarchy/install.sh [--dry-run] [--include-monitors] [--exclude-config <relative-path>]...
 
 Link Omarchy settings into ${XDG_CONFIG_HOME:-$HOME/.config}.
 Existing files and conflicting links are preserved in a unique directory under
 ${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/.
 Monitor settings are skipped unless --include-monitors is supplied.
+--exclude-config skips a config destination (repeatable; used by bootstrap for personal overrides).
 --dry-run prints changes without creating directories, backups, or links.
 HELP
 }
 
 dry_run=false
 include_monitors=false
-for arg in "$@"; do
-  case "$arg" in
+excluded_configs=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --dry-run) dry_run=true ;;
     --include-monitors) include_monitors=true ;;
+    --exclude-config)
+      [[ $# -ge 2 && -n "$2" && "$2" != /* && "/$2/" != */../* && "$2" != --* ]] || {
+        printf 'Expected a relative config path after --exclude-config.\n' >&2
+        exit 2
+      }
+      excluded_configs+=("$2")
+      shift ;;
     -h|--help) usage; exit 0 ;;
-    *) printf 'Unknown option: %s\n' "$arg" >&2; usage >&2; exit 2 ;;
+    *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
+  shift
 done
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
@@ -40,6 +50,14 @@ while IFS= read -r relative || [[ -n "$relative" ]]; do
   if [[ "$relative" == /* || "/$relative/" == */../* || "$relative" != */* ]]; then
     printf 'Invalid manifest path: %s\n' "$relative" >&2
     exit 1
+  fi
+  excluded=false
+  for excluded_config in "${excluded_configs[@]}"; do
+    if [[ "$relative" == "$excluded_config" ]]; then excluded=true; break; fi
+  done
+  if "$excluded"; then
+    printf 'Skip config overridden by personal settings: %s\n' "$relative"
+    continue
   fi
   if [[ "$relative" == hypr/monitors.lua && "$include_monitors" == false ]]; then
     printf 'Skip monitor settings (use --include-monitors).\n'

@@ -22,9 +22,9 @@ sudo apt-get update && sudo apt-get install -y curl ca-certificates
 - Supports macOS, Debian/Ubuntu/Linux Mint, and already-installed Omarchy.
 - Clones to `~/code/darius/dogfiles`; preserves existing checkouts and local edits.
 - Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
-- On macOS/Debian, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
+- On all supported platforms, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
 - Installs TPM and tmux plugins; links configs with backups and safe reruns.
-- On Omarchy, preserves its shell and uses separate desktop/terminal configs.
+- On Omarchy, applies desktop/terminal configs with personal `conf/` configs taking priority.
 
 If macOS opens the command-line tools installer, finish it and rerun bootstrap.
 Open a new terminal after setup. Options: `bash ~/code/darius/dogfiles/bootstrap.sh --help`.
@@ -74,6 +74,7 @@ bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
 
 - Keep the checkout in place: installed links point into it, and edits through them change the repo.
 - Conflicts are backed up under `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`. Restore a file by removing its link and moving its backup back.
+- Tmux config is linked at both `~/.tmux.conf` and `${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf` so existing XDG settings cannot override it.
 - Configs use `${XDG_CONFIG_HOME:-$HOME/.config}`; XDG paths must be absolute.
 - Dry-run makes no changes. Without a checkout, file-level checks remain pending.
 
@@ -83,8 +84,9 @@ To add a config, place it under `conf/` and add a `source|root|destination` mapp
 tmux.conf|home|.tmux.conf
 ```
 
-`home` means `$HOME`; `config` means the XDG config directory. Choose `common.links`
-for all platforms, `shell.links` for macOS/Debian, or `macos.links` for macOS, then reapply links.
+`home` means `$HOME`; `config` means the XDG config directory. Both `common.links`
+and `shell.links` apply on every supported platform; `macos.links` applies only on macOS.
+Reapply links after updating a manifest.
 Legacy Bash, PulseAudio, redshift, and launcher examples are saved but not automatically applied.
 
 ## Optional post-installation
@@ -118,7 +120,8 @@ bash ~/code/darius/dogfiles/conf/macos
 
 ## Omarchy desktop
 
-Bootstrap applies these settings automatically. For desktop configs only:
+Bootstrap applies these settings automatically, skipping destinations managed by personal
+`conf/` manifests so personal settings always win. For desktop configs only:
 
 ```bash
 cd ~/code/darius/dogfiles
