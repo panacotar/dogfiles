@@ -81,6 +81,7 @@ bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
 ```
 
 - Keep the checkout in place: installed links point into it, and edits through them change the repo.
+- Codex settings live in `conf/codex.toml`, linked as `~/.codex/config.toml`. Reasoning display and summaries are disabled; restart Codex after changing them. Keep credentials in the local Codex credential store, outside this repository.
 - Conflicts are backed up under `${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/`. Restore a file by removing its link and moving its backup back.
 - On Omarchy, the XDG tmux config is a wrapper that selects bootstrap’s `~/.tmux/plugins/` directory before loading your personal config. Existing tmux servers are reloaded by the full Omarchy bootstrap. Other platforms use the shared config directly.
 - Tmux config is linked at both `~/.tmux.conf` and `${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf` so existing XDG settings cannot override it.
