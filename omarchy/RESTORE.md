@@ -2,7 +2,7 @@
 
 - Captured: 2026-10-25
 - Omarchy package: `4.0.6-1`
-- Theme: `tokyo-night`
+- Preferred theme: `lupine` (light; updated 2026-10-29)
 - Desktop shortcut: Super + Shift + A launches `codex-desktop` (package `openai-codex-desktop`).
 - Touchpad: natural scrolling enabled.
 - Monitor settings: automatic preferred output/mode/scale, with `GDK_SCALE=2`.
@@ -17,11 +17,14 @@ Personal destinations declared in `conf/common.links` and `conf/shell.links` alw
 take priority, including when running `omarchy/install.sh` directly. The desktop
 installer skips those destinations; bootstrap installs the personal links.
 
-Apply the theme manually after installation:
+Apply the preferred light theme manually after installation (the installer does
+not change themes):
 
 ```bash
-omarchy theme set tokyo-night
+omarchy theme set lupine
 ```
+
+This applies the Lupine palette and sets the system color preference to light.
 
 Generated colors/backgrounds under `~/.local/state/omarchy/current` are not
 tracked. Terminal configs retain their references to those generated files.
