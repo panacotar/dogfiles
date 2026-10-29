@@ -86,6 +86,7 @@ bash ~/code/darius/dogfiles/bootstrap.sh --configs-only
 - On Omarchy, the XDG tmux config is a wrapper that selects bootstrap’s `~/.tmux/plugins/` directory before loading your personal config. Existing tmux servers are reloaded by the full Omarchy bootstrap. Other platforms use the shared config directly.
 - Tmux config is linked at both `~/.tmux.conf` and `${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf` so existing XDG settings cannot override it.
 - Configs use `${XDG_CONFIG_HOME:-$HOME/.config}`; XDG paths must be absolute.
+- Lazygit settings live in `conf/lazygit.yml`. Bootstrap links them to `~/Library/Application Support/lazygit/config.yml` on macOS and `~/.config/lazygit/config.yml` on Linux (including Ubuntu, Mint, and Omarchy). An explicit `XDG_CONFIG_HOME` overrides the location on either platform.
 - Dry-run makes no changes. Without a checkout, file-level checks remain pending.
 
 To add a config, place it under `conf/` and add a `source|root|destination` mapping:

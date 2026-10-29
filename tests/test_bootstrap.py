@@ -449,6 +449,41 @@ main --dry-run
         self.assertEqual(snapshot(self.home), before)
         self.assert_no_mutations()
 
+    def test_lazygit_platform_paths_backups_and_rerun(self):
+        repo = self.checkout()
+        for platform in ('macos', 'debian', 'omarchy'):
+            for custom_xdg in (False, True):
+                with self.subTest(platform=platform, custom_xdg=custom_xdg):
+                    config = self.home / ('custom config' if custom_xdg else '.config')
+                    target = (self.home / 'Library/Application Support/lazygit/config.yml'
+                              if platform == 'macos' and not custom_xdg
+                              else config / 'lazygit/config.yml')
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.unlink(missing_ok=True)
+                    target.write_text('original lazygit config')
+                    code = LIBRARY + '\nplatform=' + platform + '''
+repo_dir="$CHECKOUT"
+config_root=${XDG_CONFIG_HOME:-$HOME/.config}
+state_root="$HOME/.local/state"
+dry_run=true; include_monitors=false
+link_configs
+'''
+                    env = {'CHECKOUT': str(repo),
+                           'XDG_CONFIG_HOME': str(config) if custom_xdg else ''}
+                    before = snapshot(self.home)
+                    result = self.run_script(code, env=env)
+                    self.assert_success(result)
+                    self.assertIn('Would link: ' + str(target), result.stdout)
+                    self.assertEqual(snapshot(self.home), before)
+                    self.assert_success(self.run_script(code + '\ndry_run=false; link_configs\n', env=env))
+                    self.assertEqual(target.readlink(), repo / 'conf/lazygit.yml')
+                    backups = self.home / '.local/state/dogfiles/backups'
+                    self.assertTrue(any(path.read_text() == 'original lazygit config'
+                                        for path in backups.rglob('config.yml')))
+                    before = snapshot(self.home)
+                    self.assert_success(self.run_script(code + '\ndry_run=false; link_configs\n', env=env))
+                    self.assertEqual(snapshot(self.home), before)
+
     def test_config_only_dry_run_and_relative_correct_link(self):
         repo = self.checkout()
         (self.home / '.vimrc').symlink_to('code/darius/dogfiles/conf/vimrc')

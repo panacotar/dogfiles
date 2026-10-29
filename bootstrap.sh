@@ -432,6 +432,10 @@ collect_links() {
         config) target="$config_root/$relative" ;;
         *) die "Unknown destination type: $kind" ;;
       esac
+      # Lazygit uses Application Support on macOS unless XDG is explicitly set.
+      if [[ "$platform" == macos && "$kind" == config && "$relative" == lazygit/config.yml && -z "${XDG_CONFIG_HOME:-}" ]]; then
+        target="$HOME/Library/Application Support/lazygit/config.yml"
+      fi
       # Only Omarchy needs a wrapper to select bootstrap's plugin directory.
       if [[ "$platform" == omarchy && "$kind" == config && "$relative" == tmux/tmux.conf && "$source" == tmux.conf ]]; then
         source=tmux-omarchy.conf

@@ -5,3 +5,4 @@ vimrc|home|.vimrc
 tmux.conf|home|.tmux.conf
 tmux.conf|config|tmux/tmux.conf
 codex.toml|home|.codex/config.toml
+lazygit.yml|config|lazygit/config.yml

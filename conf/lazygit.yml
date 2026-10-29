@@ -1,0 +1,3 @@
+git:
+  # Keep signed commits inside Lazygit instead of opening a subprocess.
+  overrideGpg: true
