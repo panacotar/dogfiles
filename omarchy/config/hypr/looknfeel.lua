@@ -48,3 +48,11 @@
 --     column_width = 0.97,
 --   },
 -- })
+
+-- Super + Shift + Backspace to toggle gaps
+hl.config({
+    general = {
+        gaps_in = 2, -- spacing between tiles (default 5)
+        gaps_out = 3, -- spacing around the screen edges (default 10)
+    },
+})
