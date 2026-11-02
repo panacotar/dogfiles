@@ -35,14 +35,14 @@
         },
         {
           "id": "omarchy.system-update"
+        },
+        {
+          "id": "ignibyte.stay-awake-sessions"
         }
       ],
       "right": [
         {
           "id": "omarchy.tray"
-        },
-        {
-          "id": "ignibyte.stay-awake-sessions"
         },
         {
           "id": "omarchy.agents"
