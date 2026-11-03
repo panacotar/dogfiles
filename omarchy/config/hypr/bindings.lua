@@ -31,3 +31,7 @@
 -- Open Codex desktop instead of the default ChatGPT webapp.
 hl.unbind("SUPER + SHIFT + A")
 o.bind("SUPER + SHIFT + A", "Codex desktop", { launch = "codex-desktop" })
+
+-- Make Super+F maximize the window while keeping the top bar visible.
+hl.unbind("SUPER + F")
+o.bind("SUPER + F", "Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
