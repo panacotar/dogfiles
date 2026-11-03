@@ -37,7 +37,8 @@
           "id": "omarchy.system-update"
         },
         {
-          "id": "ignibyte.stay-awake-sessions"
+          "id": "ignibyte.stay-awake-sessions",
+          "defaultScope": "sleep"
         }
       ],
       "right": [
