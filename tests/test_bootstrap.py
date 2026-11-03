@@ -1231,8 +1231,8 @@ install_packages
         (self.bin / 'tldr').unlink()
         expected = {
             'macos': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite exiftool pkgconf gh jq ca-certificates csvlens',
-            'debian': 'git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates xz-utils',
-            'omarchy': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates csvlens',
+            'debian': 'git curl wget unzip zsh vim tealdeer tmux gnupg tig tree htop sqlite3 libimage-exiftool-perl pkg-config gh jq openssh-client ca-certificates xz-utils net-tools',
+            'omarchy': 'git curl wget unzip zsh vim tealdeer lazygit tmux gnupg tig tree htop sqlite perl-image-exiftool pkgconf github-cli jq openssh ca-certificates csvlens net-tools',
         }
         for platform, packages in expected.items():
             result = self.run_script(LIBRARY + '\nplatform=' + platform + '; package_list; printf "%s\\n" "${packages[@]}"\n')
@@ -1257,7 +1257,7 @@ install_packages
                                 env=self.env, text=True, capture_output=True)
         self.assert_success(result)
         self.assertIn('SHELL=' + str(self.bin / 'zsh'), result.stdout)
-        self.assertIn("ll='ls -alh'", result.stdout)
+        self.assertIn("ll='ls -alF'", result.stdout)
         self.assertIn('SSH_KEY=github_id_ed25519', result.stdout)
         self.assertNotIn('no such file', result.stderr)
         self.assertNotIn('not found', result.stderr)

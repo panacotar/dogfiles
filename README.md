@@ -22,6 +22,7 @@ sudo apt-get update && sudo apt-get install -y curl ca-certificates
 - Supports macOS, Debian/Ubuntu/Linux Mint, and already-installed Omarchy.
 - Clones to `~/code/darius/dogfiles`; preserves existing checkouts and local edits.
 - Installs common tools: Git, curl, wget, unzip, Zsh, Vim, tldr, Lazygit, csvlens, tmux, GPG, tig, tree, htop, SQLite, ExifTool, pkg-config, gh, and jq.
+- On Linux (including Omarchy), also installs OpenSSH and net-tools.
 - On all supported platforms, installs Oh My Zsh and its plugins, then makes Zsh the login shell.
 - Loads the GitHub SSH key into a shared agent, including on reruns with an existing key. Zsh reuses that agent and loads missing keys on terminal startup; encrypted keys need unlocking once per agent session.
 - Installs TPM and tmux plugins; links configs with backups and safe reruns.

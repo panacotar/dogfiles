@@ -7,7 +7,7 @@
 #  3. Install missing prerequisites/common tools with Homebrew, APT or Pacman:
 #     git, curl, wget, unzip, zsh, vim, tldr (tealdeer), lazygit, csvlens, tmux, gpg, tig,
 #     tree, htop, sqlite3, exiftool, pkg-config, gh, jq, and CA certificates.
-#     Linux also gets OpenSSH; Debian-family X11 sessions also get xclip.
+#     Linux also gets OpenSSH and net-tools; Debian-family X11 sessions also get xclip.
 #     macOS checks Apple command-line tools and installs Homebrew if missing.
 #     Debian refreshes APT metadata; Omarchy uses its existing Pacman database.
 #  4. Use pinned, checksum-verified x86_64/ARM64 releases of Lazygit and csvlens if APT cannot provide them,
@@ -52,14 +52,14 @@ readonly -a MACOS_PACKAGES=(
   lazygit sqlite exiftool pkgconf gh csvlens
 )
 readonly -a DEBIAN_PACKAGES=(
-  sqlite3 libimage-exiftool-perl pkg-config gh openssh-client xz-utils
+  sqlite3 libimage-exiftool-perl pkg-config gh openssh-client xz-utils net-tools
 )
 # Lazygit and csvlens use APT when available on Debian, otherwise verified binaries.
 readonly -a DEBIAN_X11_PACKAGES=(
   xclip
 )
 readonly -a OMARCHY_PACKAGES=(
-  lazygit sqlite perl-image-exiftool pkgconf github-cli openssh csvlens
+  lazygit sqlite perl-image-exiftool pkgconf github-cli openssh csvlens net-tools
 )
 
 # Pins needed before a checkout exists. Other source pins: scripts/sources.sh
