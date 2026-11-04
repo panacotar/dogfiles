@@ -1,12 +1,12 @@
 {
   "version": 1,
   "idle": {
-    "screensaver": 150,
-    "lock": 300
+    "screensaver": 400,
+    "lock": 600
   },
   "bar": {
     "position": "top",
-    "transparent": false,
+    "transparent": true,
     "centerAnchor": "omarchy.clock",
     "layout": {
       "left": [

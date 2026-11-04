@@ -35,3 +35,23 @@ o.bind("SUPER + SHIFT + A", "Codex desktop", { launch = "codex-desktop" })
 -- Make Super+F maximize the window while keeping the top bar visible.
 hl.unbind("SUPER + F")
 o.bind("SUPER + F", "Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
+
+-- Bring selected workspaces to the current monitor instead of changing screens.
+for workspace = 1, 10 do
+  local key = "SUPER + code:" .. tostring(workspace + 9)
+  hl.unbind(key)
+  o.bind(key, "Switch to workspace " .. workspace .. " on current monitor",
+    hl.dsp.focus({ workspace = tostring(workspace), on_current_monitor = true }))
+end
+
+for _, binding in ipairs({
+  { "SUPER + TAB", "e+1", "Next workspace on current monitor" },
+  { "SUPER + SHIFT + TAB", "e-1", "Previous workspace on current monitor" },
+  { "SUPER + CTRL + TAB", "previous", "Former workspace on current monitor" },
+  { "SUPER + mouse_down", "e+1", "Scroll workspace forward on current monitor" },
+  { "SUPER + mouse_up", "e-1", "Scroll workspace backward on current monitor" },
+}) do
+  hl.unbind(binding[1])
+  o.bind(binding[1], binding[3],
+    hl.dsp.focus({ workspace = binding[2], on_current_monitor = true }))
+end

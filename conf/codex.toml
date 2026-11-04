@@ -69,9 +69,12 @@ BROWSER_USE_TINYSKY_ENABLED = "1"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.1016.61520"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/home/darius/.codex/plugins/cache/openai-bundled/browser/26.1016.61520/scripts/browser-service.mjs"}'
+BROWSER_USE_CODEX_APP_VERSION = "26.1027.51404"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/home/darius/.codex/plugins/cache/openai-bundled/browser/26.1027.51404/scripts/browser-service.mjs"}'
 CODEX_CLI_PATH = "/usr/lib/chatgpt/resources/codex"
 
 [projects."/home/darius/code/darius/dogfiles"]
+trust_level = "trusted"
+
+[projects."/home/darius/code/darius/jobs"]
 trust_level = "trusted"
