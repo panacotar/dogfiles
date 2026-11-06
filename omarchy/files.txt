@@ -1,5 +1,6 @@
 hypr/.luarc.json
 hypr/hyprland.lua
+hypr/hotcorners.lua
 hypr/autostart.lua
 hypr/bindings.lua
 hypr/input.lua
