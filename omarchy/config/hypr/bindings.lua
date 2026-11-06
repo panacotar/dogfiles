@@ -33,8 +33,8 @@ hl.unbind("SUPER + SHIFT + A")
 o.bind("SUPER + SHIFT + A", "Codex desktop", { launch = "codex-desktop" })
 
 -- Make Super+F maximize the window while keeping the top bar visible.
-hl.unbind("SUPER + F")
-o.bind("SUPER + F", "Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
+-- hl.unbind("SUPER + F")
+-- o.bind("SUPER + F", "Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
 
 -- Bring selected workspaces to the current monitor instead of changing screens.
 for workspace = 1, 10 do
