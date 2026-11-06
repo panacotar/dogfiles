@@ -54,6 +54,8 @@ hl.config({
     general = {
         gaps_in = 2, -- spacing between tiles (default 5)
         gaps_out = 3, -- spacing around the screen edges (default 10)
+        -- Set floating as the default layout instead of dwindle/master.
+        layout = "floating",
     },
 })
 
