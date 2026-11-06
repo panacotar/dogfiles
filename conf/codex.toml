@@ -69,8 +69,8 @@ BROWSER_USE_TINYSKY_ENABLED = "1"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.1027.51404"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/home/darius/.codex/plugins/cache/openai-bundled/browser/26.1027.51404/scripts/browser-service.mjs"}'
+BROWSER_USE_CODEX_APP_VERSION = "26.1029.61003"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/home/darius/.codex/plugins/cache/openai-bundled/browser/26.1029.61003/scripts/browser-service.mjs"}'
 CODEX_CLI_PATH = "/usr/lib/chatgpt/resources/codex"
 
 [projects."/home/darius/code/darius/dogfiles"]
@@ -78,3 +78,21 @@ trust_level = "trusted"
 
 [projects."/home/darius/code/darius/jobs"]
 trust_level = "trusted"
+
+[mcp_servers.mnemosyne]
+command = "/home/darius/.local/bin/mnemosyne-mcp"
+args = ["serve"]
+startup_timeout_sec = 120
+enabled = true
+required = true
+startup_readiness = "connection"
+
+[features]
+memories = false
+external_agent_memory_import = false
+analytics_plan_history = false
+chronicle = false
+
+[memories]
+generate_memories = false
+use_memories = false
