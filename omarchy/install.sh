@@ -12,6 +12,8 @@ ${XDG_STATE_HOME:-$HOME/.local/state}/dogfiles/backups/.
 Destinations declared in conf/common.links and conf/shell.links always take priority.
 Use bootstrap.sh to install those personal links.
 Monitor settings are skipped unless --include-monitors is supplied.
+The floating workspace default is seeded in XDG_STATE_HOME when absent.
+An existing workspace default is preserved.
 --exclude-config skips a config destination (repeatable; used by bootstrap for personal overrides).
 --dry-run prints changes without creating directories, backups, or links.
 HELP
@@ -139,6 +141,21 @@ for relative in "${files[@]}"; do
     printf 'Linked: %s -> %s\n' "$target_file" "$source_file"
   fi
 done
+
+# Omarchy restores workspace modes from regular files in XDG_STATE_HOME.
+# Copy the initial preference rather than linking it: its loader uses find -type f,
+# and the Appearance menu must be able to change the saved default independently.
+workspace_default_relative=omarchy/workspace-layouts/default.lua
+workspace_default="$state_root/$workspace_default_relative"
+if [[ -e "$workspace_default" || -L "$workspace_default" ]]; then
+  printf 'Keep existing workspace default: %s\n' "$workspace_default"
+elif "$dry_run"; then
+  printf 'Would seed floating workspace default: %s\n' "$workspace_default"
+else
+  mkdir -p -- "$(dirname -- "$workspace_default")"
+  cp -- "$script_dir/state/$workspace_default_relative" "$workspace_default"
+  printf 'Seeded floating workspace default: %s\n' "$workspace_default"
+fi
 if [[ -n "$backup_dir" ]]; then
   printf '\nOriginal files saved in: %s\n' "$backup_dir"
 fi

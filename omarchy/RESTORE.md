@@ -39,6 +39,23 @@ from that backup directory back to the same path under `~/.config`. If there
 was no original file, just remove the installed link. Back up any later edits
 before undoing. Reload Hyprland and check its configuration errors afterward.
 
+## Floating workspaces
+
+The installer copies `omarchy/state/omarchy/workspace-layouts/default.lua` to
+`${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/workspace-layouts/default.lua`
+when no default exists. Omarchy loads this regular state file at login and on
+config reload, making floating the default for workspaces without an override.
+Rerunning the installer preserves any later choice made in Appearance > Workspace
+Layout. Super + L cycles the current workspace's mode and saves its override.
+
+`general.layout` in `hypr/looknfeel.lua` stays `dwindle`: Hyprland silently falls
+back to dwindle for `"floating"`. Floating must use `o.workspace_mode` instead.
+The mode floats windows and enables Omarchy's titlebars. To check persistence,
+run `hyprctl reload`, `hyprctl configerrors`, and
+`omarchy hyprland workspace layout current`. A floating workspace still reports
+`tiledLayout: dwindle` through Hyprland; inspect window `floating` flags or use
+Omarchy's mode command instead.
+
 ## Hot corners
 
 Pause the pointer in the bottom-left corner of any display for one second to
