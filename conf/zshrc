@@ -80,9 +80,21 @@ if [[ "$(uname -s)" == Darwin ]]; then
     [[ -d "$optional_bin" ]] && path+=("$optional_bin")
   done
   if command -v brew >/dev/null 2>&1; then
-    for optional_bin in "$(brew --prefix)/opt/openjdk@17/bin" "$(brew --prefix)/opt/openvpn/sbin"; do
+    # openjdk@17 is keg-only, so Apple's /usr/bin/java stub is found first unless
+    # JAVA_HOME is set and its bin directory is placed ahead of /usr/bin.
+    if [[ -z "${JAVA_HOME:-}" ]]; then
+      jdk17_home="$(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+      if [[ -x "$jdk17_home/bin/java" ]]; then
+        export JAVA_HOME="$jdk17_home"
+      fi
+      unset jdk17_home
+    fi
+    for optional_bin in "$(brew --prefix)/opt/openvpn/sbin"; do
       [[ -d "$optional_bin" ]] && path+=("$optional_bin")
     done
+  fi
+  if [[ -n "${JAVA_HOME:-}" && -d "$JAVA_HOME/bin" ]]; then
+    path=("$JAVA_HOME/bin" $path)
   fi
   unset optional_bin
 fi
