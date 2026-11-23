@@ -104,3 +104,4 @@ fi
 [[ -f "$HOME/Downloads/google-cloud-sdk/path.zsh.inc" ]] && source "$HOME/Downloads/google-cloud-sdk/path.zsh.inc"
 [[ -f "$HOME/Downloads/google-cloud-sdk/completion.zsh.inc" ]] && source "$HOME/Downloads/google-cloud-sdk/completion.zsh.inc"
 true
+alias qmd='/opt/homebrew/bin/node /opt/homebrew/lib/node_modules/@tobilu/qmd/dist/cli/qmd.js'
