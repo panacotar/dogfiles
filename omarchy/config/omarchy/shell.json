@@ -1,8 +1,8 @@
 {
   "version": 1,
   "idle": {
-    "screensaver": 400,
-    "lock": 600
+    "screensaver": 600,
+    "lock": 700
   },
   "bar": {
     "position": "top",
@@ -23,7 +23,7 @@
         },
         {
           "id": "omarchy.clock",
-          "format": "dddd HH:mm",
+          "format": "ddd d MMM HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "verticalFormat": "HH\n—\nmm"
         },
